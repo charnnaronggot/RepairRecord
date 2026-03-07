@@ -1,0 +1,160 @@
+import { useState } from "react";
+import Camera from "./Camera";
+import RepairItemsTable from "./RepairItemsTable";
+import RepairPartsTable from "./RepairPartsTable";
+import type { RepairRecord, RepairItem, RepairPart } from "../types/RepairRecord";
+import { emptyRepairRecord } from "../types/RepairRecord";
+import { addRepairRecord, updateRepairRecord } from "../services/firebaseService";
+import { generateRepairPDF, generateDummyPDF } from "../utils/pdfGenerator";
+
+interface RepairFormProps {
+  initialRecord?: RepairRecord;
+  onSave?: () => void;
+  onCancel?: () => void;
+}
+
+export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFormProps) {
+  const [form, setForm] = useState<RepairRecord>(initialRecord || { ...emptyRepairRecord });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const isEdit = !!initialRecord?.id;
+
+  const updateField = (field: keyof RepairRecord, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleItemsChange = (items: RepairItem[]) => {
+    setForm((prev) => ({ ...prev, repairItems: items }));
+  };
+
+  const handlePartsChange = (parts: RepairPart[]) => {
+    setForm((prev) => ({ ...prev, repairParts: parts }));
+  };
+
+  const handlePhotoCapture = (imageData: string) => {
+    setForm((prev) => ({ ...prev, photo: imageData }));
+  };
+
+  const handleSave = async () => {
+    if (!form.invoiceNumber.trim()) {
+      setMessage("กรุณากรอกเลขที่ใบแจ้งซ่อม");
+      return;
+    }
+    
+    setSaving(true);
+    setMessage("");
+    try {
+      if (isEdit && form.id) {
+        // แก้ไข
+        await updateRepairRecord(form.id, form);
+        setMessage("แก้ไขสำเร็จ!");
+      } else {
+        // สร้างใหม่
+        const id = await addRepairRecord(form);
+        setMessage(`บันทึกสำเร็จ! (ID: ${id})`);
+        setForm({ ...emptyRepairRecord });
+      }
+      onSave?.();
+    } catch (err) {
+      console.error(err);
+      setMessage("เกิดข้อผิดพลาดในการบันทึก — กรุณาตรวจสอบการเชื่อมต่อ Firebase");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleGeneratePDF = () => {
+    generateRepairPDF(form);
+  };
+
+  const fields: { key: keyof RepairRecord; label: string; type?: string; placeholder?: string }[] = [
+    { key: "invoiceNumber", label: "เลขที่ใบแจ้งซ่อม (Invoice No.)", placeholder: "INV-2026-XXXX" },
+    { key: "client", label: "ลูกค้า (Client)", placeholder: "ชื่อลูกค้า / บริษัท" },
+    { key: "phone", label: "เบอร์โทร (Phone)", placeholder: "0XX-XXX-XXXX", type: "tel" },
+    { key: "pcr", label: "PCR", placeholder: "PCR Number" },
+    { key: "repairReportDate", label: "วันที่รายงาน (Date)", type: "date" },
+    { key: "brand", label: "ยี่ห้อ (Brand)", placeholder: "e.g. Toyota, Honda" },
+    { key: "vehicleModel", label: "รุ่นรถ (Model)", placeholder: "e.g. Hilux Revo" },
+    { key: "vehicleNumber", label: "หมายเลขรถ (Vehicle No.)", placeholder: "Vehicle Number" },
+    { key: "licensePlate", label: "ทะเบียนรถ (License Plate)", placeholder: "กข 1234 กรุงเทพ" },
+    { key: "vehicleIdentificationNumber", label: "เลข VIN", placeholder: "17 characters" },
+    { key: "serialNumber", label: "Serial Number", placeholder: "Serial Number" },
+    { key: "mileNumber", label: "เลขไมล์ (Mile)", placeholder: "e.g. 85,230" },
+    { key: "jobNumber", label: "เลขที่งาน (Job No.)", placeholder: "JOB-XXXX" },
+  ];
+
+  return (
+    <div className="repair-form-container">
+      <header className="form-header">
+        {/* <h1>{isEdit ? "✏️ แก้ไขการซ่อม" : "🔧 บันทึกการซ่อมใหม่"}</h1> */}
+        {/* <p>{isEdit ? "Repair Record System - Edit" : "Repair Record System"}</p> */}
+      </header>
+
+      <form onSubmit={(e) => e.preventDefault()}>
+        {/* ─── Vehicle & Client Info Grid ─── */}
+        <section className="form-section">
+          <h2>ข้อมูลลูกค้า & ยานพาหนะ</h2>
+          <div className="form-grid">
+            {fields.map((f) => (
+              <div className="form-group" key={f.key}>
+                <label className="form-label">{f.label}</label>
+                <input
+                  className="form-input"
+                  type={f.type ?? "text"}
+                  value={form[f.key] as string}
+                  placeholder={f.placeholder}
+                  onChange={(e) => updateField(f.key, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ─── Camera / Photo ─── */}
+        <section className="form-section">
+          <h2>รูปภาพ</h2>
+          <Camera onCapture={handlePhotoCapture} currentPhoto={form.photo} />
+        </section>
+
+        {/* ─── Repair Items Table ─── */}
+        <section className="form-section">
+          <RepairItemsTable items={form.repairItems} onChange={handleItemsChange} />
+        </section>
+
+        {/* ─── Repair Parts Table ─── */}
+        <section className="form-section">
+          <RepairPartsTable parts={form.repairParts} onChange={handlePartsChange} />
+        </section>
+
+        {/* ─── Actions ─── */}
+        <section className="form-actions">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? "กำลังบันทึก..." : isEdit ? "✏️ แก้ไข" : "💾 บันทึกข้อมูล"}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
+            📄 สร้าง PDF
+          </button>
+          <button type="button" className="btn btn-outline" onClick={generateDummyPDF}>
+            📋 ดาวน์โหลด PDF ตัวอย่าง
+          </button>
+          {onCancel && (
+            <button type="button" className="btn btn-cancel-outline" onClick={onCancel}>
+              ❌ ยกเลิก
+            </button>
+          )}
+        </section>
+
+        {message && (
+          <div className={`toast ${message.includes("สำเร็จ") ? "toast-success" : "toast-error"}`}>
+            {message}
+          </div>
+        )}
+      </form>
+    </div>
+  );
+}
