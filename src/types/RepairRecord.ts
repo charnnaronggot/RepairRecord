@@ -21,7 +21,7 @@ export interface RepairRecord {
   invoiceNumber: string;
   client: string;
   phone: string;
-  pcr: string;
+  driver: string;
   repairReportDate: string;
   brand: string;
   vehicleModel: string;
@@ -43,7 +43,7 @@ export const emptyRepairRecord: RepairRecord = {
   invoiceNumber: "",
   client: "",
   phone: "",
-  pcr: "",
+  driver: "",
   repairReportDate: new Date().toISOString().split("T")[0],
   brand: "",
   vehicleModel: "",

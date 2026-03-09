@@ -90,7 +90,7 @@ const filteredRecords = records.filter((record) => {
         <div className="search-box">
           <input
             type="text"
-            placeholder="ค้นหา (Invoice, Client, Vehicle No.)"
+            placeholder="ค้นหา (Invoice, Client, License Plate)"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -111,9 +111,9 @@ const filteredRecords = records.filter((record) => {
           <button className="btn btn-primary" onClick={loadRecords}>
             🔄 รีโหลด
           </button>
-          <button className="btn btn-secondary" onClick={() => exportToCSV(filteredRecords)}>
+          {/* <button className="btn btn-secondary" onClick={() => exportToCSV(filteredRecords)}>
             📥 CSV
-          </button>
+          </button> */}
           <button className="btn btn-secondary" onClick={() => exportToExcel(filteredRecords)}>
             📥 Excel
           </button>
@@ -160,12 +160,12 @@ const filteredRecords = records.filter((record) => {
                     </span>
                   </td>
                   <td className="small">
-                    {record.createdAt
-                      ? new Date(record.createdAt).toLocaleString("th-TH", {
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                        })
+                    {record.repairReportDate
+                      ? new Date(record.repairReportDate).toLocaleDateString("th-TH", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                      })
                       : "-"}
                   </td>
                   <td className="actions-cell">
@@ -189,6 +189,9 @@ const filteredRecords = records.filter((record) => {
                       title="View PDF"
                     >
                       📄 PDF
+                    </button>
+                    <button className = "btn-action viewer" onClick = {() => exportToExcel([record])}>
+                      📥 Excel
                     </button>
                     <button
                       className="btn-action deleter"

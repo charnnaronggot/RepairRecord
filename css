@@ -1,0 +1,136 @@
+
+.header{
+  display: grid;
+  height: 120px;
+  grid-template-columns: 20% 60% 20%; /* แบ่งคอลัมน์ 20/60/20 */
+  align-items: center;               /* จัดให้อยู่แนวแกนตั้งตรงกลาง */
+  gap: 12px;                         /* ระยะห่างระหว่างคอลัมน์ */
+}
+
+/* ให้รูปย่อ/ขยายตามช่อง */
+.header img{
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* จัดกึ่งกลางเนื้อหาตรงกลางตามต้องการ */
+.header .center{
+  text-align: center;     /* ถ้าอยากชิดซ้ายเปลี่ยนเป็น left */
+  line-height: 1.3;
+}
+
+.header .center h1{
+  margin: 6px 0 0;
+  font-size: 22px;
+}
+.header .center p{
+  margin: 2px 0;
+  font-size: 14px;
+}
+
+.info-grid{
+  display: grid;
+  grid-template-columns: 120px 1fr 100px 1fr 100px 1fr 100px 1fr;
+  /* LABEL ┆ VALUE ┆ LABEL ┆ VALUE ... */
+  border: 1px solid #000;
+  font-size: 14px;
+}
+
+.info-grid > div{
+  border-right: 1px solid #000;
+  border-bottom: 1px solid #000;
+  padding: 6px 8px;
+  min-height: 24px;
+  display:flex;
+  align-items:center;
+}
+
+.info-grid > div:nth-child(8n){
+  border-right:none; /* ช่องสุดท้ายของแต่ละแถว */
+}
+
+.label{
+  font-weight: 600;
+  background: #f6f6f6;
+}
+
+.value{
+  background: #fff;
+}
+
+/* ช่องที่รวม 2 ช่อง (เหมือนในภาพแถวล่าง) */
+.wide{
+  grid-column: span 7;
+}
+
+.empty{
+  border: none;
+  background: none;
+}
+
+/* ตัวห่อ: เผื่อจะใช้กับหน้า A4 */
+.repair-table-wrap{
+  /* ถ้าใช้เดี่ยว ๆ ให้จำกัดความกว้างใกล้ A4 ในจอ */
+  max-width: 190mm;  /* ภายในขอบหน้า */
+  margin:  auto;
+}
+
+/* ตารางรายการซ่อม */
+.repair-table{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed; /* ทำให้คอลัมน์มีสัดส่วนคงที่ */
+  border: 1px solid #000;              /* กรอบนอกหนากว่า */
+}
+
+/* หัวตาราง */
+.repair-table thead th{
+  border: 1px solid #000;
+  border-top: none; border-left: none; border-right: 1px solid #000;
+  background: #f2f2f2;
+  padding: 6px 6px;
+  font-weight: 700;
+  text-align: center;
+}
+.repair-table thead th:last-child{ border-right: none; }
+
+/* ตัวตาราง */
+.repair-table td{
+  border: 1px solid #000;
+  padding: 6px 6px;
+  vertical-align: top;
+}
+.sign {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+/* สัดส่วนคอลัมน์ (ใกล้เคียงภาพ) */
+.col-no{    width: 10mm; text-align: center; }
+.col-item{  width: auto; }
+.col-amount {width: 10mm;}
+.col-unit-price {width: 20mm;}
+.col-part{  width: 50mm; }
+.col-price{ width: 20mm; text-align: right; }
+.col-remark{width: 20mm; }
+
+/* ปรับสไตล์เวลา print */
+@media print{
+  @page{ size: A4; margin: 10mm; }
+  .repair-table-wrap{ max-width: none; }
+}
+
+/* ทำให้ responsive: จอแคบให้เรียงลงล่าง */
+@media (max-width: 600px){
+  .header{
+    grid-template-columns: 1fr; /* ซ้อนเป็น 1 คอลัมน์ */
+    text-align: center;
+  }
+  .header .left,
+  .header .right{
+    justify-self: center; /* จัดโลโก้ให้อยู่กลาง */
+    max-width: 120px;
+  }
+}

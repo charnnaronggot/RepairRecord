@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import html2canvas from "html2canvas";
 import type { RepairRecord } from "../types/RepairRecord";
+import autoTable from "jspdf-autotable";
 
 export function generateRepairPDF(record: RepairRecord): void {
   const doc = new jsPDF("p", "mm", "a4");
@@ -27,7 +28,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     ["Invoice No.", record.invoiceNumber],
     ["Client", record.client],
     ["Phone", record.phone],
-    ["PCR", record.pcr],
+    ["Driver", record.driver],
     ["Date", record.repairReportDate],
     ["Brand", record.brand],
     ["Model", record.vehicleModel],
@@ -194,7 +195,7 @@ export function generateDummyPDF(): void {
     invoiceNumber: "INV-2026-0001",
     client: "บริษัท ทดสอบ จำกัด",
     phone: "081-234-5678",
-    pcr: "PCR-001",
+    driver: "นายสมชาย พนักงานขับรถ",
     repairReportDate: "2026-03-07",
     brand: "Toyota",
     vehicleModel: "Hilux Revo",
@@ -277,4 +278,30 @@ export function generateDummyPDF(): void {
   };
 
   generateRepairPDF(dummyRecord);
+}
+
+export function generateRepairPDFFromHTML(htmlElement: HTMLElement): void {
+  html2canvas(htmlElement).then((canvas) => {
+    const imgData = canvas.toDataURL("image/png");
+    const doc = new jsPDF("p", "mm", "a4");
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const imgWidth = pageWidth - 20;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 10;
+
+    doc.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight - 20;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      doc.addPage();
+      doc.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight - 20;
+    }
+
+    doc.save(`repair_report_${Date.now()}.pdf`);
+  });
 }

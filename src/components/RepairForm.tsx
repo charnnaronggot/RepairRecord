@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState , useRef } from "react";
 import Camera from "./Camera";
 import RepairItemsTable from "./RepairItemsTable";
 import RepairPartsTable from "./RepairPartsTable";
+import AutocompleteInput from "./AutocompleteInput";
 import type { RepairRecord, RepairItem, RepairPart } from "../types/RepairRecord";
 import { emptyRepairRecord } from "../types/RepairRecord";
 import { addRepairRecord, updateRepairRecord } from "../services/firebaseService";
-import { generateRepairPDF, generateDummyPDF } from "../utils/pdfGenerator";
-
+import { generateRepairPDF, generateDummyPDF, generateRepairPDFFromHTML } from "../utils/pdfGenerator";
+import { clientsList, brandsList } from "../config/clientsAndBrands";
+import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
 interface RepairFormProps {
   initialRecord?: RepairRecord;
   onSave?: () => void;
@@ -18,7 +20,7 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const isEdit = !!initialRecord?.id;
-
+  const pdfTemplateRef = useRef<HTMLDivElement | null>(null);
   const updateField = (field: keyof RepairRecord, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
@@ -45,11 +47,9 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
     setMessage("");
     try {
       if (isEdit && form.id) {
-        // แก้ไข
         await updateRepairRecord(form.id, form);
         setMessage("แก้ไขสำเร็จ!");
       } else {
-        // สร้างใหม่
         const id = await addRepairRecord(form);
         setMessage(`บันทึกสำเร็จ! (ID: ${id})`);
         setForm({ ...emptyRepairRecord });
@@ -64,14 +64,15 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
   };
 
   const handleGeneratePDF = () => {
-    generateRepairPDF(form);
+    if (!pdfTemplateRef.current) return;
+    generateRepairPDFFromHTML(pdfTemplateRef.current);
   };
 
   const fields: { key: keyof RepairRecord; label: string; type?: string; placeholder?: string }[] = [
     { key: "invoiceNumber", label: "เลขที่ใบแจ้งซ่อม (Invoice No.)", placeholder: "INV-2026-XXXX" },
     { key: "client", label: "ลูกค้า (Client)", placeholder: "ชื่อลูกค้า / บริษัท" },
     { key: "phone", label: "เบอร์โทร (Phone)", placeholder: "0XX-XXX-XXXX", type: "tel" },
-    { key: "pcr", label: "PCR", placeholder: "PCR Number" },
+    { key: "driver", label: "พนักงานขับรถ", placeholder: "PCR Number" },
     { key: "repairReportDate", label: "วันที่รายงาน (Date)", type: "date" },
     { key: "brand", label: "ยี่ห้อ (Brand)", placeholder: "e.g. Toyota, Honda" },
     { key: "vehicleModel", label: "รุ่นรถ (Model)", placeholder: "e.g. Hilux Revo" },
@@ -98,13 +99,31 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
             {fields.map((f) => (
               <div className="form-group" key={f.key}>
                 <label className="form-label">{f.label}</label>
-                <input
-                  className="form-input"
-                  type={f.type ?? "text"}
-                  value={form[f.key] as string}
-                  placeholder={f.placeholder}
-                  onChange={(e) => updateField(f.key, e.target.value)}
-                />
+                {f.key === "client" ? (
+                  <AutocompleteInput
+                    value={form[f.key] as string}
+                    onChange={(value) => updateField(f.key, value)}
+                    suggestions={clientsList}
+                    placeholder={f.placeholder}
+                    type={f.type}
+                  />
+                ) : f.key === "brand" ? (
+                  <AutocompleteInput
+                    value={form[f.key] as string}
+                    onChange={(value) => updateField(f.key, value)}
+                    suggestions={brandsList}
+                    placeholder={f.placeholder}
+                    type={f.type}
+                  />
+                ) : (
+                  <input
+                    className="form-input"
+                    type={f.type ?? "text"}
+                    value={form[f.key] as string}
+                    placeholder={f.placeholder}
+                    onChange={(e) => updateField(f.key, e.target.value)}
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -139,9 +158,12 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
           <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
             📄 สร้าง PDF
           </button>
-          <button type="button" className="btn btn-outline" onClick={generateDummyPDF}>
+          {/* <button type="button" className="btn btn-outline" onClick={generateDummyPDF}>
             📋 ดาวน์โหลด PDF ตัวอย่าง
-          </button>
+          </button> */}
+        <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
+          📄 Generate PDF
+        </button>
           {onCancel && (
             <button type="button" className="btn btn-cancel-outline" onClick={onCancel}>
               ❌ ยกเลิก
@@ -155,6 +177,23 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
           </div>
         )}
       </form>
+
+      {/* PDF Template (ซ่อนไว้: วางนอกจอ) */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: "-10000px",
+          opacity: 0,
+          pointerEvents: "none",
+          zIndex: -1,
+        }}
+      >
+        <RepairPDFTemplate form={form} containerRef={pdfTemplateRef} />
+      </div>
+
+
     </div>
   );
 }

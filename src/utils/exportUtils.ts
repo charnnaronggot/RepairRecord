@@ -14,7 +14,7 @@ export function exportToCSV(records: RepairRecord[]): void {
     "Invoice No.",
     "Client",
     "Phone",
-    "PCR",
+    "Driver",
     "Date",
     "Brand",
     "Model",
@@ -35,7 +35,7 @@ export function exportToCSV(records: RepairRecord[]): void {
     record.invoiceNumber,
     record.client,
     record.phone,
-    record.pcr,
+    record.driver,
     record.repairReportDate,
     record.brand,
     record.vehicleModel,
@@ -101,7 +101,7 @@ export function exportToExcel(records: RepairRecord[]): void {
           <th>Invoice No.</th>
           <th>Client</th>
           <th>Phone</th>
-          <th>PCR</th>
+          <th>Driver</th>
           <th>Date</th>
           <th>Brand</th>
           <th>Model</th>
@@ -127,7 +127,7 @@ export function exportToExcel(records: RepairRecord[]): void {
         <td>${record.invoiceNumber}</td>
         <td>${record.client}</td>
         <td>${record.phone}</td>
-        <td>${record.pcr}</td>
+        <td>${record.driver}</td>
         <td>${record.repairReportDate}</td>
         <td>${record.brand}</td>
         <td>${record.vehicleModel}</td>
