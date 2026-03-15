@@ -6,7 +6,7 @@ import AutocompleteInput from "./AutocompleteInput";
 import type { RepairRecord, RepairItem, RepairPart } from "../types/RepairRecord";
 import { emptyRepairRecord } from "../types/RepairRecord";
 import { addRepairRecord, updateRepairRecord } from "../services/firebaseService";
-import { generateRepairPDF, generateDummyPDF, generateRepairPDFFromHTML } from "../utils/pdfGenerator";
+import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
 import { clientsList, brandsList } from "../config/clientsAndBrands";
 import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
 interface RepairFormProps {
@@ -38,11 +38,6 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
   };
 
   const handleSave = async () => {
-    if (!form.invoiceNumber.trim()) {
-      setMessage("กรุณากรอกเลขที่ใบแจ้งซ่อม");
-      return;
-    }
-    
     setSaving(true);
     setMessage("");
     try {
@@ -57,7 +52,7 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
       onSave?.();
     } catch (err) {
       console.error(err);
-      setMessage("เกิดข้อผิดพลาดในการบันทึก — กรุณาตรวจสอบการเชื่อมต่อ Firebase");
+      setMessage("เกิดข้อผิดพลาดในการบันทึก — กรุณาตรวจสอบการเชื่อมต่อ Firebase"); 
     } finally {
       setSaving(false);
     }
@@ -69,17 +64,17 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
   };
 
   const fields: { key: keyof RepairRecord; label: string; type?: string; placeholder?: string }[] = [
-    { key: "invoiceNumber", label: "เลขที่ใบแจ้งซ่อม (Invoice No.)", placeholder: "INV-2026-XXXX" },
+    { key: "invoiceNumber", label: "เลขที่ใบแจ้งซ่อม", placeholder: "INV-2026-XXXX" },
     { key: "client", label: "ลูกค้า (Client)", placeholder: "ชื่อลูกค้า / บริษัท" },
     { key: "phone", label: "เบอร์โทร (Phone)", placeholder: "0XX-XXX-XXXX", type: "tel" },
-    { key: "driver", label: "พนักงานขับรถ", placeholder: "PCR Number" },
+    { key: "driver", label: "พนักงานขับรถ", placeholder: "พนักงานขับรถ" },
     { key: "repairReportDate", label: "วันที่รายงาน (Date)", type: "date" },
-    { key: "brand", label: "ยี่ห้อ (Brand)", placeholder: "e.g. Toyota, Honda" },
-    { key: "vehicleModel", label: "รุ่นรถ (Model)", placeholder: "e.g. Hilux Revo" },
+    { key: "brand", label: "ยี่ห้อ (Brand)", placeholder: "e.g. Isuzu" },
+    { key: "vehicleModel", label: "รุ่นรถ (Model)", placeholder: "e.g.GXZ360 " },
     { key: "vehicleNumber", label: "หมายเลขรถ (Vehicle No.)", placeholder: "Vehicle Number" },
     { key: "licensePlate", label: "ทะเบียนรถ (License Plate)", placeholder: "กข 1234 กรุงเทพ" },
-    { key: "vehicleIdentificationNumber", label: "เลข VIN", placeholder: "17 characters" },
-    { key: "serialNumber", label: "Serial Number", placeholder: "Serial Number" },
+    { key: "vehicleIdentificationNumber", label: "เลขตัวถัง (VIN)", placeholder: "17 characters" },
+    { key: "serialNumber", label: "เลขเครื่อง (Serial Number)", placeholder: "Serial Number" },
     { key: "mileNumber", label: "เลขไมล์ (Mile)", placeholder: "e.g. 85,230" },
     { key: "jobNumber", label: "เลขที่งาน (Job No.)", placeholder: "JOB-XXXX" },
   ];
@@ -155,15 +150,19 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
           >
             {saving ? "กำลังบันทึก..." : isEdit ? "✏️ แก้ไข" : "💾 บันทึกข้อมูล"}
           </button>
-          <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
+            {/* <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
+          📄 Generate PDF
+        </button>  */}
+          {/* <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
             📄 สร้าง PDF
           </button>
-          {/* <button type="button" className="btn btn-outline" onClick={generateDummyPDF}>
+          <button type="button" className="btn btn-outline" onClick={generateDummyPDF}>
             📋 ดาวน์โหลด PDF ตัวอย่าง
-          </button> */}
+          </button>
         <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
           📄 Generate PDF
-        </button>
+        </button> */
+        }
           {onCancel && (
             <button type="button" className="btn btn-cancel-outline" onClick={onCancel}>
               ❌ ยกเลิก

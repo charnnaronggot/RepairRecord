@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import type { RepairRecord } from "../types/RepairRecord";
 import { getRepairRecords, updateRepairRecord, deleteRepairRecord } from "../services/firebaseService";
-import { generateRepairPDF } from "../utils/pdfGenerator";
-import { exportToCSV, exportToExcel } from "../utils/exportUtils";
+import {  exportToExcel } from "../utils/exportUtils";
 
 interface RecordsListProps {
   onEdit: (record: RepairRecord) => void;
@@ -183,13 +182,13 @@ const filteredRecords = records.filter((record) => {
                     >
                       ✏️ Edit
                     </button>
-                    <button
+                    {/* <button
                       className="btn-action viewer"
                       onClick={() => generateRepairPDF(record)}
                       title="View PDF"
                     >
                       📄 PDF
-                    </button>
+                    </button> */}
                     <button className = "btn-action viewer" onClick = {() => exportToExcel([record])}>
                       📥 Excel
                     </button>
