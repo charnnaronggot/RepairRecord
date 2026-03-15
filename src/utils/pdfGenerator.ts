@@ -130,7 +130,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     part.totalPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
   ]);
 
-  const partsTotal = record.repairParts.reduce((s, p) => s + p.totalPrice, 0);
+  // const partsTotal = record.repairParts.reduce((s, p) => s + p.totalPrice, 0);
   // const grandTotal = itemsTotal + partsTotal;
 
   autoTable(doc, {
