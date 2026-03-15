@@ -6,7 +6,7 @@ import AutocompleteInput from "./AutocompleteInput";
 import type { RepairRecord, RepairItem, RepairPart } from "../types/RepairRecord";
 import { emptyRepairRecord } from "../types/RepairRecord";
 import { addRepairRecord, updateRepairRecord } from "../services/firebaseService";
-import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
+// import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
 import { clientsList, brandsList } from "../config/clientsAndBrands";
 import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
 interface RepairFormProps {
