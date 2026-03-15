@@ -43,15 +43,15 @@ export default function RepairItemsTable({ items, onChange }: RepairItemsTablePr
       </div>
 
       <div className="table-wrapper">
-        <table className="repair-table">
+        <table className="repair-table width-full">
           <thead>
             <tr>
               <th style={{ width: "40px" }}>#</th>
               <th>รายละเอียด</th>
-              <th style={{ width: "80px" }}>จำนวน</th>
+              {/* <th style={{ width: "80px" }}>จำนวน</th>
               <th style={{ width: "80px" }}>หน่วย</th>
               <th style={{ width: "120px" }}>ราคา/หน่วย</th>
-              <th style={{ width: "120px" }}>รวม</th>
+              <th style={{ width: "120px" }}>รวม</th> */}
               <th style={{ width: "60px" }}></th>
             </tr>
           </thead>
@@ -74,7 +74,7 @@ export default function RepairItemsTable({ items, onChange }: RepairItemsTablePr
                     placeholder="รายละเอียดงานซ่อม / อะไหล่"
                   />
                 </td>
-                <td>
+                {/* <td>
                   <input
                     type="number"
                     min="0"
@@ -102,7 +102,7 @@ export default function RepairItemsTable({ items, onChange }: RepairItemsTablePr
                   {item.totalPrice.toLocaleString("th-TH", {
                     minimumFractionDigits: 2,
                   })}
-                </td>
+                </td> */}
                 <td className="center">
                   <button
                     type="button"
