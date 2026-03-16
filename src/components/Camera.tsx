@@ -166,9 +166,9 @@ export default function Camera({ onCapture, currentPhoto }: CameraProps) {
       <div className="camera-controls">
         {!streaming ? (
           <>
-            <button type="button" className="btn btn-camera" onClick={startCamera}>
+            {/* <button type="button" className="btn btn-camera" onClick={startCamera}>
               เปิดกล้อง
-            </button>
+            </button> */}
             <label className="btn btn-upload">
               อัปโหลดรูป
               <input
