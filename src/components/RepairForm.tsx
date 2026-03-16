@@ -38,10 +38,6 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
   };
 
   const handleSave = async () => {
-    if (!form.invoiceNumber.trim()) {
-      setMessage("กรุณากรอกเลขที่ใบแจ้งซ่อม");
-      return;
-    }
     
     setSaving(true);
     setMessage("");
@@ -155,15 +151,15 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
           >
             {saving ? "กำลังบันทึก..." : isEdit ? "✏️ แก้ไข" : "💾 บันทึกข้อมูล"}
           </button>
-          <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
+          {/* <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
             📄 สร้าง PDF
-          </button>
+          </button> */}
           {/* <button type="button" className="btn btn-outline" onClick={generateDummyPDF}>
             📋 ดาวน์โหลด PDF ตัวอย่าง
           </button> */}
-        <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
+        {/* <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
           📄 Generate PDF
-        </button>
+        </button> */}
           {onCancel && (
             <button type="button" className="btn btn-cancel-outline" onClick={onCancel}>
               ❌ ยกเลิก
