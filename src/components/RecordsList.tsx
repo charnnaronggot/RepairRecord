@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { RepairRecord } from "../types/RepairRecord";
 import { getRepairRecords, updateRepairRecord, deleteRepairRecord } from "../services/firebaseService";
 import { generateRepairPDF } from "../utils/pdfGenerator";
-import { exportToCSV, exportToExcel } from "../utils/exportUtils";
+import { exportToExcel } from "../utils/exportUtils";
 
 interface RecordsListProps {
   onEdit: (record: RepairRecord) => void;
