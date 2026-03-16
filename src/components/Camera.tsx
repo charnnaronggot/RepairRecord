@@ -98,20 +98,20 @@ export default function Camera({ onCapture, currentPhoto }: CameraProps) {
     [compressCanvasToDataUrl]
   );
 
-  const startCamera = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: 1280, height: 720 },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setStreaming(true);
-      }
-    } catch (err) {
-      console.error("Camera access denied:", err);
-      alert("ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการเข้าถึงกล้อง");
-    }
-  }, []);
+  // const startCamera = useCallback(async () => {
+  //   try {
+  //     const stream = await navigator.mediaDevices.getUserMedia({
+  //       video: { facingMode: "environment", width: 1280, height: 720 },
+  //     });
+  //     if (videoRef.current) {
+  //       videoRef.current.srcObject = stream;
+  //       setStreaming(true);
+  //     }
+  //   } catch (err) {
+  //     console.error("Camera access denied:", err);
+  //     alert("ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการเข้าถึงกล้อง");
+  //   }
+  // }, []);
 
   const stopCamera = useCallback(() => {
     if (videoRef.current?.srcObject) {
