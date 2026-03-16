@@ -62,7 +62,7 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
   // Filter records
 const filteredRecords = records.filter((record) => {
   const matchesSearch = (
-    String(record.invoiceNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(record.jobNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     String(record.client || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     String(record.vehicleNumber || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -90,7 +90,7 @@ const filteredRecords = records.filter((record) => {
         <div className="search-box">
           <input
             type="text"
-            placeholder="ค้นหา (Invoice, Client, License Plate)"
+            placeholder="ค้นหา (Job No., Client, License Plate)"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -126,7 +126,7 @@ const filteredRecords = records.filter((record) => {
           <thead>
             <tr>
               <th style={{ width: "40px" }}>#</th>
-              <th>Invoice No.</th>
+              <th>Job no.</th>
               <th>Client</th>
               <th>Vehicle</th>
               <th>License Plate</th>
@@ -147,7 +147,7 @@ const filteredRecords = records.filter((record) => {
                 <tr key={record.id}>
                   <td className="center">{idx + 1}</td>
                   <td>
-                    <strong>{record.invoiceNumber}</strong>
+                    <strong>{record.jobNumber}</strong>
                   </td>
                   <td>{record.client}</td>
                   <td>
