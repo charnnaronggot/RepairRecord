@@ -59,10 +59,10 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
     }
   };
 
-  const handleGeneratePDF = () => {
-    if (!pdfTemplateRef.current) return;
-    generateRepairPDFFromHTML(pdfTemplateRef.current);
-  };
+  // const handleGeneratePDF = () => {
+  //   if (!pdfTemplateRef.current) return;
+  //   generateRepairPDFFromHTML(pdfTemplateRef.current);
+  // };
 
   const fields: { key: keyof RepairRecord; label: string; type?: string; placeholder?: string }[] = [
     { key: "invoiceNumber", label: "เลขที่ใบแจ้งซ่อม (Invoice No.)", placeholder: "INV-2026-XXXX" },
