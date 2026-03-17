@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { RepairRecord } from "../types/RepairRecord";
 import { getRepairRecords, updateRepairRecord, deleteRepairRecord } from "../services/firebaseService";
 // import { generateRepairPDF } from "../utils/pdfGenerator";
+import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
 import { exportToExcel } from "../utils/exportUtils";
+import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
 
 interface RecordsListProps {
   onEdit: (record: RepairRecord) => void;
@@ -14,6 +16,9 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
   const [message, setMessage] = useState("");
+  const [pdfRecords, setPdfRecords] = useState<RepairRecord[]>([]);
+  const [isPreparingPdf, setIsPreparingPdf] = useState(false);
+  const pdfContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Load records on mount
   useEffect(() => {
@@ -59,6 +64,20 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
     }
   };
 
+  const handleExportFilteredPDF = () => {
+    if (filteredRecords.length === 0) {
+      setMessage("ไม่พบข้อมูลสำหรับ export PDF");
+      return;
+    }
+    setPdfRecords(filteredRecords);
+    setIsPreparingPdf(true);
+  };
+
+  const handleExportRecordPDF = (record: RepairRecord) => {
+    setPdfRecords([record]);
+    setIsPreparingPdf(true);
+  };
+
   // Filter records
 const filteredRecords = records.filter((record) => {
   const matchesSearch = (
@@ -69,6 +88,19 @@ const filteredRecords = records.filter((record) => {
     const matchesStatus = statusFilter === "all" || record.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  useEffect(() => {
+    if (!isPreparingPdf || !pdfContainerRef.current || pdfRecords.length === 0) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      generateRepairPDFFromHTML(pdfContainerRef.current!);
+      setIsPreparingPdf(false);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isPreparingPdf, pdfRecords]);
 
   if (loading) {
     return (
@@ -111,12 +143,14 @@ const filteredRecords = records.filter((record) => {
           <button className="btn btn-primary" onClick={loadRecords}>
             🔄 รีโหลด
           </button>
-          {/* <button className="btn btn-secondary" onClick={() => exportToCSV(filteredRecords)}>
-            📥 CSV
-          </button> */}
+
           <button className="btn btn-secondary" onClick={() => exportToExcel(filteredRecords)}>
             📥 Excel
           </button>
+          <button className="btn btn-secondary" onClick={handleExportFilteredPDF}>
+            📄 PDF
+          </button>
+          
         </div>
       </div>
 
@@ -183,13 +217,13 @@ const filteredRecords = records.filter((record) => {
                     >
                       ✏️ Edit
                     </button>
-                    {/* <button
+                    <button
                       className="btn-action viewer"
-                      onClick={() => generateRepairPDF(record)}
+                      onClick={() => handleExportRecordPDF(record)}
                       title="View PDF"
                     >
                       📄 PDF
-                    </button> */}
+                    </button>
                     <button className = "btn-action viewer" onClick = {() => exportToExcel([record])}>
                       📥 Excel
                     </button>
@@ -213,6 +247,26 @@ const filteredRecords = records.filter((record) => {
           {message}
         </div>
       )}
+
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: "-10000px",
+          pointerEvents: "none",
+          zIndex: -1,
+        }}
+      >
+        <div ref={pdfContainerRef}>
+          {pdfRecords.map((record, index) => (
+            <RepairPDFTemplate
+              key={record.id ?? `${record.jobNumber}-${index}`}
+              form={record}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

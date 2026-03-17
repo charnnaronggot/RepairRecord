@@ -125,7 +125,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     (idx + 1).toString(),
     part.partName,
     part.quantity.toString(),
-    part.unit,
+    // part.unit,
     part.unitPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
     part.totalPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
   ]);
@@ -242,7 +242,7 @@ export function generateDummyPDF(): void {
         id: "p1",
         partName: "Oil Filter",
         quantity: 1,
-        unit: "ชิ้น",
+        // unit: "ชิ้น",
         unitPrice: 350,
         totalPrice: 350,
       },
@@ -250,7 +250,7 @@ export function generateDummyPDF(): void {
         id: "p2",
         partName: "Brake Pads (Front)",
         quantity: 1,
-        unit: "ชุด",
+        // unit: "ชุด",
         unitPrice: 2200,
         totalPrice: 2200,
       },
@@ -258,7 +258,7 @@ export function generateDummyPDF(): void {
         id: "p3",
         partName: "Air Filter",
         quantity: 1,
-        unit: "ชิ้น",
+        // unit: "ชิ้น",
         unitPrice: 450,
         totalPrice: 450,
       },
@@ -266,7 +266,7 @@ export function generateDummyPDF(): void {
         id: "p4",
         partName: "Coolant",
         quantity: 2,
-        unit: "ลิตร",
+        // unit: "ลิตร",
         unitPrice: 400,
         totalPrice: 800,
       },
@@ -277,27 +277,31 @@ export function generateDummyPDF(): void {
 }
 
 export function generateRepairPDFFromHTML(htmlElement: HTMLElement): void {
-  html2canvas(htmlElement).then((canvas) => {
-    const imgData = canvas.toDataURL("image/png");
+  const render = async () => {
     const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const imgWidth = pageWidth - 20;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const pageElements = Array.from(htmlElement.querySelectorAll<HTMLElement>(".pdf-page"));
+    const targets = pageElements.length > 0 ? pageElements : [htmlElement];
 
-    let heightLeft = imgHeight;
-    let position = 10;
+    for (let i = 0; i < targets.length; i += 1) {
+      const canvas = await html2canvas(targets[i], {
+        scale: Math.max(2, Math.min(window.devicePixelRatio || 1, 3)),
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+      });
 
-    doc.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight - 20;
+      if (i > 0) {
+        doc.addPage();
+      }
 
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      doc.addPage();
-      doc.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight - 20;
+      const imgData = canvas.toDataURL("image/png");
+      doc.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
     }
 
     doc.save(`repair_report_${Date.now()}.pdf`);
-  });
+  };
+
+  void render();
 }

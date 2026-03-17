@@ -49,7 +49,7 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
               <th style={{ width: "40px" }}>#</th>
               <th>ชื่ออะไหล่</th>
               <th style={{ width: "80px" }}>จำนวน</th>
-              <th style={{ width: "80px" }}>หน่วย</th>
+              {/* <th style={{ width: "80px" }}>หน่วย</th> */}
               <th style={{ width: "120px" }}>ราคา/หน่วย</th>
               <th style={{ width: "120px" }}>รวม</th>
               <th style={{ width: "60px" }}></th>
@@ -58,7 +58,7 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
           <tbody>
             {parts.length === 0 && (
               <tr>
-                <td colSpan={7} className="empty-row">
+                <td colSpan={6} className="empty-row">
                   ยังไม่มีอะไหล่ — กดปุ่ม "เพิ่มอะไหล่" เพื่อเริ่มต้น
                 </td>
               </tr>
@@ -82,19 +82,19 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
                     onChange={(e) => updatePart(part.id, "quantity", Number(e.target.value))}
                   />
                 </td>
-                <td>
+                {/* <td>
                   <input
                     type="text"
                     value={part.unit}
                     onChange={(e) => updatePart(part.id, "unit", e.target.value)}
                   />
-                </td>
+                </td> */}
                 <td>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
-                    value={part.unitPrice}
+                    value={part.unitPrice === 0 ? "" : part.unitPrice}
                     onChange={(e) => updatePart(part.id, "unitPrice", Number(e.target.value))}
                   />
                 </td>
@@ -118,7 +118,7 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
           {parts.length > 0 && (
             <tfoot>
               <tr>
-                <td colSpan={5} className="right"><strong>รวมอะไหล่</strong></td>
+                <td colSpan={4} className="right"><strong>รวมอะไหล่</strong></td>
                 <td className="right">
                   <strong>
                     {grandTotal.toLocaleString("th-TH", {

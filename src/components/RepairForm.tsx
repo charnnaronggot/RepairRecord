@@ -6,7 +6,7 @@ import AutocompleteInput from "./AutocompleteInput";
 import type { RepairRecord, RepairItem, RepairPart } from "../types/RepairRecord";
 import { emptyRepairRecord } from "../types/RepairRecord";
 import { addRepairRecord, updateRepairRecord } from "../services/firebaseService";
-// import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
+import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
 import { clientsList, brandsList } from "../config/clientsAndBrands";
 import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
 interface RepairFormProps {
@@ -59,10 +59,10 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
     }
   };
 
-  // const handleGeneratePDF = () => {
-  //   if (!pdfTemplateRef.current) return;
-  //   generateRepairPDFFromHTML(pdfTemplateRef.current);
-  // };
+  const handleGeneratePDF = () => {
+    if (!pdfTemplateRef.current) return;
+    generateRepairPDFFromHTML(pdfTemplateRef.current);
+  };
 
   const fields: { key: keyof RepairRecord; label: string; type?: string; placeholder?: string }[] = [
     { key: "jobNumber", label: "เลขที่งาน (Job No.)", placeholder: "JOB-XXXX" },
@@ -158,9 +158,9 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
           {/* <button type="button" className="btn btn-outline" onClick={generateDummyPDF}>
             📋 ดาวน์โหลด PDF ตัวอย่าง
           </button> */}
-        {/* <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
+        <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
           📄 Generate PDF
-        </button> */}
+        </button>
           {onCancel && (
             <button type="button" className="btn btn-cancel-outline" onClick={onCancel}>
               ❌ ยกเลิก
@@ -182,7 +182,6 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
           position: "fixed",
           top: 0,
           left: "-10000px",
-          opacity: 0,
           pointerEvents: "none",
           zIndex: -1,
         }}

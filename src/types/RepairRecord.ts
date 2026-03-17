@@ -11,7 +11,7 @@ export interface RepairPart {
   id: string;
   partName: string;
   quantity: number;
-  unit: string;
+  // unit: string;
   unitPrice: number;
   totalPrice: number;
 }
@@ -70,7 +70,7 @@ export const emptyRepairItem: Omit<RepairItem, "id"> = {
 export const emptyRepairPart: Omit<RepairPart, "id"> = {
   partName: "",
   quantity: 1,
-  unit: "ชิ้น",
+  // unit: "ชิ้น",
   unitPrice: 0,
   totalPrice: 0,
 };
