@@ -1,10 +1,10 @@
 export interface RepairItem {
   id: string;
   description: string;
-  quantity: number;
-  unit: string;
-  unitPrice: number;
-  totalPrice: number;
+  // quantity: number;
+  // unit: string;
+  // unitPrice: number;
+  // totalPrice: number;
 }
 
 export interface RepairPart {
@@ -61,10 +61,10 @@ export const emptyRepairRecord: RepairRecord = {
 
 export const emptyRepairItem: Omit<RepairItem, "id"> = {
   description: "",
-  quantity: 1,
-  unit: "ชิ้น",
-  unitPrice: 0,
-  totalPrice: 0,
+  // quantity: 1,
+  // unit: "ชิ้น",
+  // unitPrice: 0,
+  // totalPrice: 0,
 };
 
 export const emptyRepairPart: Omit<RepairPart, "id"> = {

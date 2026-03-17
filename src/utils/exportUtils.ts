@@ -1,4 +1,18 @@
 import type { RepairRecord } from "../types/RepairRecord";
+import { utils, writeFileXLSX } from "xlsx";
+
+function safeCellValue(value: unknown): string | number {
+  if (typeof value === "number") return value;
+  const text = String(value ?? "");
+  return /^[=+\-@]/.test(text) ? `'${text}` : text;
+}
+
+function formatThaiDateOnly(value: string | undefined): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("th-TH");
+}
 
 /**
  * Export records to CSV format
@@ -11,7 +25,7 @@ export function exportToCSV(records: RepairRecord[]): void {
 
   // Prepare header
   const headers = [
-    "Invoice No.",
+    "Job No.",
     "Client",
     "Phone",
     "Driver",
@@ -23,7 +37,7 @@ export function exportToCSV(records: RepairRecord[]): void {
     "VIN",
     "Serial No.",
     "Mile No.",
-    "Job No.",
+    "Invoice No.",
     "Status",
     "Repair Items Count",
     "Parts Count",
@@ -32,7 +46,7 @@ export function exportToCSV(records: RepairRecord[]): void {
 
   // Prepare data rows
   const rows = records.map((record) => [
-    record.invoiceNumber,
+    record.jobNumber,
     record.client,
     record.phone,
     record.driver,
@@ -44,11 +58,11 @@ export function exportToCSV(records: RepairRecord[]): void {
     record.vehicleIdentificationNumber,
     record.serialNumber,
     record.mileNumber,
-    record.jobNumber,
+    record.invoiceNumber,
     record.status,
-    record.repairItems.length,
-    record.repairParts.length,
-    record.createdAt ? new Date(record.createdAt).toLocaleString("th-TH") : "-",
+    record.repairItems,
+    record.repairParts,
+    formatThaiDateOnly(record.repairReportDate),
   ]);
 
   // Escape CSV values
@@ -84,8 +98,7 @@ export function exportToCSV(records: RepairRecord[]): void {
 }
 
 /**
- * Export records to Excel format using simple HTML table approach
- * (For better Excel support, consider using xlsx library)
+ * Export records to real .xlsx format to preserve UTF-8/Thai text correctly in Excel
  */
 export function exportToExcel(records: RepairRecord[]): void {
   if (records.length === 0) {
@@ -93,71 +106,73 @@ export function exportToExcel(records: RepairRecord[]): void {
     return;
   }
 
-  // Create HTML table
-  let html = `
-    <table border="1">
-      <thead>
-        <tr style="background-color: #2c3e50; color: white; font-weight: bold;">
-          <th>Invoice No.</th>
-          <th>Client</th>
-          <th>Phone</th>
-          <th>Driver</th>
-          <th>Date</th>
-          <th>Brand</th>
-          <th>Model</th>
-          <th>Vehicle No.</th>
-          <th>License Plate</th>
-          <th>VIN</th>
-          <th>Serial No.</th>
-          <th>Mile No.</th>
-          <th>Job No.</th>
-          <th>Status</th>
-          <th>Items</th>
-          <th>Parts</th>
-          <th>Created</th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
+  const headers = [
+    "Job No.",
+    "Client",
+    "Phone",
+    "Driver",
+    "Date",
+    "Brand",
+    "Model",
+    "Vehicle No.",
+    "License Plate",
+    "VIN",
+    "Serial No.",
+    "Mile No.",
+    "Invoice No.",
+    "Status",
+    "Items",
+    "Parts",
+    "Created",
+  ];
 
-  records.forEach((record) => {
-    const statusColor = record.status === "completed" ? "#27ae60" : "#e67e22";
-    html += `
-      <tr>
-        <td>${record.invoiceNumber}</td>
-        <td>${record.client}</td>
-        <td>${record.phone}</td>
-        <td>${record.driver}</td>
-        <td>${record.repairReportDate}</td>
-        <td>${record.brand}</td>
-        <td>${record.vehicleModel}</td>
-        <td>${record.vehicleNumber}</td>
-        <td>${record.licensePlate}</td>
-        <td>${record.vehicleIdentificationNumber}</td>
-        <td>${record.serialNumber}</td>
-        <td>${record.mileNumber}</td>
-        <td>${record.jobNumber}</td>
-        <td style="background-color: ${statusColor}; color: white; font-weight: bold;">${record.status}</td>
-        <td style="text-align: center;">${record.repairItems.length}</td>
-        <td style="text-align: center;">${record.repairParts.length}</td>
-        <td>${record.createdAt ? new Date(record.createdAt).toLocaleString("th-TH") : "-"}</td>
-      </tr>
-    `;
-  });
+  const rows = records.map((record) => [
+    safeCellValue(record.jobNumber),
+    safeCellValue(record.client),
+    safeCellValue(record.phone),
+    safeCellValue(record.driver),
+    safeCellValue(formatThaiDateOnly(record.repairReportDate)),
+    safeCellValue(record.brand),
+    safeCellValue(record.vehicleModel),
+    safeCellValue(record.vehicleNumber),
+    safeCellValue(record.licensePlate),
+    safeCellValue(record.vehicleIdentificationNumber),
+    safeCellValue(record.serialNumber),
+    safeCellValue(record.mileNumber),
+    safeCellValue(record.invoiceNumber),
+    safeCellValue(record.status === "completed" ? "completed" : "pending"),
+    record.repairItems.length,
+    record.repairParts.length,
+    safeCellValue(formatThaiDateOnly(record.repairReportDate)),
+  ]);
 
-  html += `
-      </tbody>
-    </table>
-  `;
+  const worksheet = utils.aoa_to_sheet([headers, ...rows]);
+  worksheet["!cols"] = [
+    { wch: 14 },
+    { wch: 24 },
+    { wch: 16 },
+    { wch: 20 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 16 },
+    { wch: 20 },
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 8 },
+    { wch: 8 },
+    { wch: 22 },
+  ];
 
-  // Create blob and download
-  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.setAttribute("href", url);
-  link.setAttribute("download", `repair_records_${new Date().toISOString().split("T")[0]}.xls`);
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const workbook = utils.book_new();
+  utils.book_append_sheet(workbook, worksheet, "Repair Records");
+
+  writeFileXLSX(
+    workbook,
+    `repair_records_${new Date().toISOString().split("T")[0]}.xlsx`,
+    { compression: true }
+  );
 }

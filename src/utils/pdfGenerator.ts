@@ -83,13 +83,9 @@ export function generateRepairPDF(record: RepairRecord): void {
   const itemTableBody = record.repairItems.map((item, idx) => [
     (idx + 1).toString(),
     item.description,
-    item.quantity.toString(),
-    item.unit,
-    item.unitPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
-    item.totalPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
   ]);
 
-  const itemsTotal = record.repairItems.reduce((s, i) => s + i.totalPrice, 0);
+  // const itemsTotal = record.repairItems.reduce((s, i) => s + i.totalPrice, 0);
 
   autoTable(doc, {
     startY: infoEndY + 12,
@@ -102,7 +98,7 @@ export function generateRepairPDF(record: RepairRecord): void {
         "",
         "",
         "Subtotal",
-        itemsTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
+        // itemsTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
       ],
     ],
     theme: "grid",
@@ -134,8 +130,8 @@ export function generateRepairPDF(record: RepairRecord): void {
     part.totalPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
   ]);
 
-  const partsTotal = record.repairParts.reduce((s, p) => s + p.totalPrice, 0);
-  const grandTotal = itemsTotal + partsTotal;
+  // const partsTotal = record.repairParts.reduce((s, p) => s + p.totalPrice, 0);
+  // const grandTotal = itemsTotal + partsTotal;
 
   autoTable(doc, {
     startY: partsTableStartY + 4,
@@ -148,7 +144,7 @@ export function generateRepairPDF(record: RepairRecord): void {
         "",
         "",
         "Grand Total",
-        grandTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
+        // grandTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
       ],
     ],
     theme: "grid",
@@ -211,34 +207,34 @@ export function generateDummyPDF(): void {
       {
         id: "1",
         description: "เปลี่ยนน้ำมันเครื่อง",
-        quantity: 1,
-        unit: "ครั้ง",
-        unitPrice: 2500,
-        totalPrice: 2500,
+        // quantity: 1,
+        // unit: "ครั้ง",
+        // unitPrice: 2500,
+        // totalPrice: 2500,
       },
       {
         id: "2",
         description: "ผ้าเบรกหน้า",
-        quantity: 2,
-        unit: "ชุด",
-        unitPrice: 1800,
-        totalPrice: 3600,
+        // quantity: 2,
+        // unit: "ชุด",
+        // unitPrice: 1800,
+        // totalPrice: 3600,
       },
       {
         id: "3",
         description: "กรองอากาศ",
-        quantity: 1,
-        unit: "ชิ้น",
-        unitPrice: 450,
-        totalPrice: 450,
+        // quantity: 1,
+        // unit: "ชิ้น",
+        // unitPrice: 450,
+        // totalPrice: 450,
       },
       {
         id: "4",
         description: "ค่าแรงช่าง",
-        quantity: 3,
-        unit: "ชั่วโมง",
-        unitPrice: 800,
-        totalPrice: 2400,
+        // quantity: 3,
+        // unit: "ชั่วโมง",
+        // unitPrice: 800,
+        // totalPrice: 2400,
       },
     ],
     repairParts: [

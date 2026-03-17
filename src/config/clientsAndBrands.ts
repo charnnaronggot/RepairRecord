@@ -2,24 +2,10 @@
 // สามารถเพิ่มหรือแก้ไขได้ตามต้องการ
 
 export const clientsList = [
-  "บริษัท ขนส่ง จำกัด",
-  "บริษัท โลจิสติกส์ไทย จำกัด",
-  "ห้างหุ้นส่วน ซี.พี.คาร์",
-  "คุณสมชาย ใจดี",
-  "คุณสมศรี รักษ์รถ",
-  "บริษัท ขนส่งสินค้า จำกัด",
-  "บริษัท ฟลีทเซอร์วิส จำกัด",
+  "Tanyatip Express",
 ];
 
 export const brandsList = [
-  "Toyota",
-  "Honda",
   "Isuzu",
-  "Mitsubishi",
-  "Nissan",
-  "Mazda",
-  "Ford",
-  "Chevrolet",
   "Hino",
-  "UD Trucks",
 ];
