@@ -18,7 +18,7 @@ interface PdfRow {
 }
 
 const FIRST_PAGE_CAPACITY = 22;
-const NEXT_PAGE_CAPACITY = 34;
+const NEXT_PAGE_CAPACITY = 22;
 
 const estimateRowUnits = (row: PdfRow): number => {
   const descriptionUnits = Math.ceil(Math.max(row.description.length, 1) / 32);
@@ -58,6 +58,10 @@ const chunkRowsByCapacity = (rows: PdfRow[]): PdfRow[][] => {
 
 export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTemplateProps) {
   const totalRows = Math.max(20, form.repairItems.length, form.repairParts.length);
+  const grandTotal = form.repairParts.reduce(
+    (sum, part) => sum + Number(part.totalPrice || 0),
+    0
+  );
 
   const rows: PdfRow[] = Array.from({ length: totalRows }, (_, i) => {
     const item = form.repairItems?.[i];
@@ -97,86 +101,80 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
             <div className="pdf-logo pdf-logo-right" aria-hidden="true" />
           </div>
 
-          {/* {pageIndex === 0 && (
-            <> */}
-              <div className="pdf-top-section">
-                <div className="pdf-info-box">
-                  <div className="pdf-row">
-                    <div className="pdf-pair wide">
-                      <span className="label">ชื่อ บริษัท/ลูกค้า</span>
-                      <span className="value">{form.client || "-"}</span>
-                    </div>
-                    <div className="pdf-pair">
-                      <span className="label">เบอร์โทร</span>
-                      <span className="value">{form.phone || "-"}</span>
-                    </div>
-                  </div>
-
-                  <div className="pdf-row  pdf-row-sep">
-                    <div className="pdf-pair full">
-                      <span className="label">พขร.</span>
-                      <span className="value">{form.driver || "-"}</span>
-                    </div>
-                  </div>
-
-                  <div className="pdf-row ">
-                    <div className="pdf-pair">
-                      <span className="label">ยี่ห้อรถ</span>
-                      <span className="value">{form.brand || "-"}</span>
-                    </div>
-                    <div className="pdf-pair">  
-                      <span className="label">รุ่นรถ</span>
-                      <span className="value">{form.vehicleModel || "-"}</span>
-                    </div>
-                    <div className="pdf-pair">
-                      <span className="label">เบอร์รถ</span>
-                      <span className="value">{form.vehicleNumber || "-"}</span>
-                    </div>
-                    <div className="pdf-pair">
-                      <span className="label">ทะเบียนรถ</span>
-                      <span className="value">{form.licensePlate || "-"}</span>
-                    </div>
-                  </div>
-
-                  <div className="pdf-row pdf-row-sep">
-                    <div className="pdf-pair wide vin-pair">
-                      <span className="label">เลขตัวถัง</span>
-                      <span className="value">{form.vehicleIdentificationNumber || "-"}</span>
-                    </div>
-                    <div className="pdf-pair">
-                      <span className="label">เลขเครื่อง</span>
-                      <span className="value">{form.serialNumber || "-"}</span>
-                    </div>
-                    <div className="pdf-pair">
-                      <span className="label">เลขไมล์</span>
-                      <span className="value">{form.mileNumber || "-"}</span>
-                    </div>
-  
-                  </div>
-                                <div className="pdf-job-row ">
-                <div className="pdf-pair">
-                  <span className="label">เลข Job</span>
-                  <span className="value">{form.jobNumber || "-"}</span>
+          <div className="pdf-top-section">
+            <div className="pdf-info-box">
+              <div className="pdf-row">
+                <div className="pdf-pair wide">
+                  <span className="label">ชื่อ บริษัท/ลูกค้า</span>
+                  <span className="value">{form.client || "-"}</span>
                 </div>
                 <div className="pdf-pair">
-                  <span className="label">วันที่ใบแจ้งซ่อม</span>
-                  <span className="value">{form.repairReportDate || "-"}</span>
-                </div>
-              </div>
-                </div>
-
-                <div className="pdf-photo-box">
-                  {form.photo ? (
-                    <img src={form.photo} alt="รูปหน้างาน" className="pdf-photo" />
-                  ) : (
-                    <div className="pdf-photo-empty">รูปภาพ</div>
-                  )}
+                  <span className="label">เบอร์โทร</span>
+                  <span className="value">{form.phone || "-"}</span>
                 </div>
               </div>
 
+              <div className="pdf-row  pdf-row-sep">
+                <div className="pdf-pair full">
+                  <span className="label">พขร.</span>
+                  <span className="value">{form.driver || "-"}</span>
+                </div>
+              </div>
 
-            {/* </>
-          )} */}
+              <div className="pdf-row">
+                <div className="pdf-pair">
+                  <span className="label">ยี่ห้อรถ</span>
+                  <span className="value">{form.brand || "-"}</span>
+                </div>
+                <div className="pdf-pair">  
+                  <span className="label">รุ่นรถ</span>
+                  <span className="value">{form.vehicleModel || "-"}</span>
+                </div>
+                <div className="pdf-pair">
+                  <span className="label">เบอร์รถ</span>
+                  <span className="value">{form.vehicleNumber || "-"}</span>
+                </div>
+                <div className="pdf-pair">
+                  <span className="label">ทะเบียนรถ</span>
+                  <span className="value">{form.licensePlate || "-"}</span>
+                </div>
+              </div>
+
+              <div className="pdf-row vin-engine-row pdf-row-sep">
+                <div className="pdf-pair vin-pair vin-extend">
+                  <span className="label">เลขตัวถัง</span>
+                  <span className="value">{form.vehicleIdentificationNumber || "-"}</span>
+                </div>
+                <div className="pdf-pair engine-extend">
+                  <span className="label">เลขเครื่อง</span>
+                  <span className="value">{form.serialNumber || "-"}</span>
+                </div>
+                <div className="pdf-pair mile-extend">
+                  <span className="label">เลขไมล์</span>
+                  <span className="value">{form.mileNumber || "-"}</span>
+                </div>
+
+              </div>
+                            <div className="pdf-job-row ">
+            <div className="pdf-pair">
+              <span className="label">เลข Job</span>
+              <span className="value">{form.jobNumber || "-"}</span>
+            </div>
+            <div className="pdf-pair">
+              <span className="label">วันที่ใบแจ้งซ่อม</span>
+              <span className="value">{form.repairReportDate || "-"}</span>
+            </div>
+          </div>
+            </div>
+
+            <div className="pdf-photo-box">
+              {form.photo ? (
+                <img src={form.photo} alt="รูปหน้างาน" className="pdf-photo" />
+              ) : (
+                <div className="pdf-photo-empty">รูปภาพ</div>
+              )}
+            </div>
+          </div>
 
           <table className="pdf-main-table">
             <thead>
@@ -203,6 +201,18 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
                 </tr>
               ))}
             </tbody>
+            {pageIndex === pages.length - 1 && (
+              <tfoot>
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "right", fontWeight: 700 }}>
+                    รวมราคา
+                  </td>
+                  <td colSpan={2} style={{ textAlign: "right", fontWeight: 700 }}>
+                    {grandTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
 
           <p className="pdf-signature">ลายเซ็น ............................</p>

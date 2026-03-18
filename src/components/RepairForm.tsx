@@ -9,6 +9,7 @@ import { addRepairRecord, updateRepairRecord } from "../services/firebaseService
 import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
 import { clientsList, brandsList } from "../config/clientsAndBrands";
 import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
+import { exportToExcel } from "../utils/exportUtils";
 interface RepairFormProps {
   initialRecord?: RepairRecord;
   onSave?: () => void;
@@ -78,7 +79,6 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
     { key: "serialNumber", label: "เลขเครื่อง (Serial Number)", placeholder: "Serial Number" },
     { key: "mileNumber", label: "เลขไมล์ (Mile)", placeholder: "e.g. 85,230" },
     { key: "invoiceNumber", label: "เลขที่ใบแจ้งซ่อม", placeholder: "INV-2026-XXXX" },
-
   ];
 
   return (
@@ -158,8 +158,11 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
           {/* <button type="button" className="btn btn-outline" onClick={generateDummyPDF}>
             📋 ดาวน์โหลด PDF ตัวอย่าง
           </button> */}
-        <button type="button" className="btn btn-secondary" onClick={handleGeneratePDF}>
+        <button type="button" className="btn btn-pdf" onClick={handleGeneratePDF}>
           📄 Generate PDF
+        </button>
+        <button type="button" className="btn btn-excel" onClick={() => exportToExcel([form])}>
+          📥 Excel
         </button>
           {onCancel && (
             <button type="button" className="btn btn-cancel-outline" onClick={onCancel}>

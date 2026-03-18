@@ -232,6 +232,22 @@ body {
   background: #219a52;
 }
 
+.btn-excel {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-excel:hover {
+  background: #219a52;
+}
+
+.btn-pdf {
+  background: #9b59b6;
+  color: #fff;
+}
+.btn-pdf:hover {
+  background: #8e44ad;
+}
+
 .btn-outline {
   background: transparent;
   color: var(--primary);
@@ -399,6 +415,22 @@ body {
 }
 .btn-action.viewer:hover {
   background: #8e44ad;
+}
+
+.btn-action.pdf-action {
+  background: #9b59b6;
+  color: white;
+}
+.btn-action.pdf-action:hover {
+  background: #8e44ad;
+}
+
+.btn-action.excel-action {
+  background: var(--accent);
+  color: white;
+}
+.btn-action.excel-action:hover {
+  background: #219a52;
 }
 
 .btn-action.deleter {

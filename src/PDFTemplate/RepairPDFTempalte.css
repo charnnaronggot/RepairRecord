@@ -102,6 +102,10 @@
 	grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.repair-pdf-a4 .pdf-row.vin-engine-row {
+	grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
 .repair-pdf-a4 .pdf-row-sep {
 	border-bottom: 0.2mm solid #707070;
 }
@@ -122,6 +126,18 @@
 
 .repair-pdf-a4 .pdf-pair.full {
 	grid-column: span 4;
+}
+
+.repair-pdf-a4 .pdf-pair.vin-extend {
+	grid-column: span 3;
+}
+
+.repair-pdf-a4 .pdf-pair.engine-extend {
+	grid-column: span 3;
+}
+
+.repair-pdf-a4 .pdf-pair.mile-extend {
+	grid-column: span 2;
 }
 
 .repair-pdf-a4 .pdf-pair.vin-pair .value {

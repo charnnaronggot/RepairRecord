@@ -144,10 +144,10 @@ const filteredRecords = records.filter((record) => {
             🔄 รีโหลด
           </button>
 
-          <button className="btn btn-secondary" onClick={() => exportToExcel(filteredRecords)}>
+          <button className="btn btn-excel" onClick={() => exportToExcel(filteredRecords)}>
             📥 Excel
           </button>
-          <button className="btn btn-secondary" onClick={handleExportFilteredPDF}>
+          <button className="btn btn-pdf" onClick={handleExportFilteredPDF}>
             📄 PDF
           </button>
           
@@ -218,13 +218,13 @@ const filteredRecords = records.filter((record) => {
                       ✏️ Edit
                     </button>
                     <button
-                      className="btn-action viewer"
+                      className="btn-action pdf-action"
                       onClick={() => handleExportRecordPDF(record)}
                       title="View PDF"
                     >
                       📄 PDF
                     </button>
-                    <button className = "btn-action viewer" onClick = {() => exportToExcel([record])}>
+                    <button className = "btn-action excel-action" onClick = {() => exportToExcel([record])}>
                       📥 Excel
                     </button>
                     <button

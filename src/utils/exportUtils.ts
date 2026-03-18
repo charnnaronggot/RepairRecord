@@ -183,6 +183,36 @@ function setCell(
   };
 }
 
+function setLabelValueCell(
+  worksheet: ExcelJS.Worksheet,
+  address: string,
+  label: string,
+  value: string | number,
+  options?: {
+    fontSize?: number;
+    align?: "left" | "center" | "right";
+  }
+): void {
+  const cell = worksheet.getCell(address);
+  cell.value = {
+    richText: [
+      {
+        text: `${label} `,
+        font: { name: "TH Sarabun New", size: options?.fontSize ?? 14, bold: true },
+      },
+      {
+        text: String(value ?? "-"),
+        font: { name: "TH Sarabun New", size: options?.fontSize ?? 14 },
+      },
+    ],
+  };
+  cell.alignment = {
+    vertical: "middle",
+    horizontal: options?.align ?? "left",
+    wrapText: true,
+  };
+}
+
 function sheetNameForRecord(record: RepairRecord, index: number): string {
   const base = (record.jobNumber || `Record_${index + 1}`).replace(/[\\/*?:\[\]]/g, "-");
   return base.slice(0, 31);
@@ -228,6 +258,126 @@ function toPageChunks<T>(items: T[], size: number): T[][] {
   return result;
 }
 
+function getColumnPixelWidth(worksheet: ExcelJS.Worksheet, col: number): number {
+  const width = worksheet.getColumn(col).width ?? 8.43;
+  return Math.max(1, Math.floor(width * 7 + 5));
+}
+
+function getRowPixelHeight(worksheet: ExcelJS.Worksheet, row: number): number {
+  const rowHeight = worksheet.getRow(row).height ?? worksheet.properties.defaultRowHeight ?? 15;
+  return Math.max(1, Math.floor((rowHeight * 96) / 72));
+}
+
+function getRangePixelSize(
+  worksheet: ExcelJS.Worksheet,
+  startCol: number,
+  startRow: number,
+  endCol: number,
+  endRow: number
+): { width: number; height: number } {
+  let width = 0;
+  let height = 0;
+
+  for (let c = startCol; c <= endCol; c += 1) {
+    width += getColumnPixelWidth(worksheet, c);
+  }
+  for (let r = startRow; r <= endRow; r += 1) {
+    height += getRowPixelHeight(worksheet, r);
+  }
+
+  return { width, height };
+}
+
+function pixelToColumnOffset(
+  worksheet: ExcelJS.Worksheet,
+  startCol: number,
+  pixels: number
+): number {
+  let remaining = pixels;
+  let col = startCol;
+  let units = 0;
+
+  while (remaining > 0) {
+    const colPixels = getColumnPixelWidth(worksheet, col);
+    if (remaining >= colPixels) {
+      units += 1;
+      remaining -= colPixels;
+      col += 1;
+    } else {
+      units += remaining / colPixels;
+      remaining = 0;
+    }
+  }
+
+  return units;
+}
+
+function pixelToRowOffset(
+  worksheet: ExcelJS.Worksheet,
+  startRow: number,
+  pixels: number
+): number {
+  let remaining = pixels;
+  let row = startRow;
+  let units = 0;
+
+  while (remaining > 0) {
+    const rowPixels = getRowPixelHeight(worksheet, row);
+    if (remaining >= rowPixels) {
+      units += 1;
+      remaining -= rowPixels;
+      row += 1;
+    } else {
+      units += remaining / rowPixels;
+      remaining = 0;
+    }
+  }
+
+  return units;
+}
+
+async function getImageSize(base64DataUrl: string): Promise<{ width: number; height: number }> {
+  return await new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onerror = () => reject(new Error("Failed to load image dimensions"));
+    image.src = base64DataUrl;
+  });
+}
+
+async function addContainedImageToRange(
+  workbook: ExcelJS.Workbook,
+  worksheet: ExcelJS.Worksheet,
+  imageDataUrl: string,
+  extension: "png" | "jpeg",
+  startCol: number,
+  startRow: number,
+  endCol: number,
+  endRow: number
+): Promise<void> {
+  const { width: imageWidth, height: imageHeight } = await getImageSize(imageDataUrl);
+  const { width: boxWidth, height: boxHeight } = getRangePixelSize(worksheet, startCol, startRow, endCol, endRow);
+  const scale = Math.min(boxWidth / imageWidth, boxHeight / imageHeight);
+
+  const renderWidth = Math.max(1, Math.floor(imageWidth * scale));
+  const renderHeight = Math.max(1, Math.floor(imageHeight * scale));
+  const offsetX = Math.floor((boxWidth - renderWidth) / 2);
+  const offsetY = Math.floor((boxHeight - renderHeight) / 2);
+
+  const colOffset = pixelToColumnOffset(worksheet, startCol, offsetX);
+  const rowOffset = pixelToRowOffset(worksheet, startRow, offsetY);
+
+  const imageId = workbook.addImage({
+    base64: imageDataUrl,
+    extension,
+  });
+
+  worksheet.addImage(imageId, {
+    tl: { col: startCol - 1 + colOffset, row: startRow - 1 + rowOffset },
+    ext: { width: renderWidth, height: renderHeight },
+  });
+}
+
 async function toBase64DataUrl(url: string): Promise<string> {
   const response = await fetch(url);
   const blob = await response.blob();
@@ -271,27 +421,21 @@ async function buildTemplateSheet(
   worksheet.properties.defaultRowHeight = 20;
 
   worksheet.columns = [
+    { width: 6 },
+    { width: 20 },
+    { width: 20 },
+    { width: 10 },
     { width: 9 },
+    { width: 10 },
     { width: 9 },
-    { width: 14 },
-    { width: 14 },
-    { width: 14 },
-    { width: 14 },
-    { width: 9 },
-    { width: 9 },
+    { width: 10 },
   ];
-
   worksheet.mergeCells("A1:B4");
   worksheet.mergeCells("C1:F1");
   worksheet.mergeCells("C2:F2");
   worksheet.mergeCells("C3:F3");
   worksheet.mergeCells("C4:F4");
-
-  const logoImageId = workbook.addImage({
-    base64: logoDataUrl,
-    extension: "jpeg",
-  });
-  worksheet.addImage(logoImageId, "A1:B4");
+  await addContainedImageToRange(workbook, worksheet, logoDataUrl, "jpeg", 1, 1, 2, 4);
 
   setCell(worksheet, "C1", "บริษัท ประธานพรเซอร์วิซ จำกัด", { bold: true, fontSize: 18, align: "center" });
   setCell(worksheet, "C2", "124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110", { align: "center" });
@@ -299,49 +443,43 @@ async function buildTemplateSheet(
   setCell(worksheet, "C4", "ใบแจ้งซ่อม", { bold: true, fontSize: 22, align: "center" });
 
   worksheet.mergeCells("G6:H11");
-  applyBorderRange(worksheet, 6, 11, 7, 8);
 
   if (record.photo) {
     const extension = record.photo.includes("image/png") ? "png" : "jpeg";
-    const photoImageId = workbook.addImage({
-      base64: record.photo,
-      extension,
-    });
-    worksheet.addImage(photoImageId, "G6:H11");
+    await addContainedImageToRange(workbook, worksheet, record.photo, extension, 7, 6, 8, 11);
   }
 
   worksheet.mergeCells("A6:C6");
   worksheet.mergeCells("D6:F6");
   worksheet.mergeCells("A7:F7");
+  worksheet.mergeCells("A8:B8");
+  worksheet.mergeCells("C8:D8");
+  worksheet.mergeCells("E8:F8");
+  worksheet.mergeCells("A9:C9");
   worksheet.mergeCells("D9:F9");
-  worksheet.mergeCells("B11:F11");
+  worksheet.mergeCells("A10:C10");
+  worksheet.mergeCells("D10:F10");
+  worksheet.mergeCells("A11:C11");
+  worksheet.mergeCells("D11:F11");
 
-  setCell(worksheet, "A6", `ชื่อ บริษัท/ลูกค้า ${record.client || "-"}`);
-  setCell(worksheet, "D6", `เบอร์โทร ${record.phone || "-"}`);
-  setCell(worksheet, "A7", `พขร. ${record.driver || "-"}`);
-  setCell(worksheet, "A8", "ยี่ห้อรถ", { bold: true });
-  setCell(worksheet, "B8", record.brand || "-");
-  setCell(worksheet, "C8", "รุ่นรถ", { bold: true });
-  setCell(worksheet, "D8", record.vehicleModel || "-");
-  setCell(worksheet, "E8", "เบอร์รถ", { bold: true });
-  setCell(worksheet, "F8", record.vehicleNumber || "-");
-  setCell(worksheet, "A9", "ทะเบียนรถ", { bold: true });
-  setCell(worksheet, "B9", record.licensePlate || "-");
-  setCell(worksheet, "C9", "เลขตัวถัง", { bold: true });
-  setCell(worksheet, "D9", record.vehicleIdentificationNumber || "-");
-  setCell(worksheet, "A10", "เลขเครื่อง", { bold: true });
-  setCell(worksheet, "B10", record.serialNumber || "-");
-  setCell(worksheet, "C10", "เลขไมล์", { bold: true });
-  setCell(worksheet, "D10", record.mileNumber || "-");
-  setCell(worksheet, "E10", "เลข Job", { bold: true });
-  setCell(worksheet, "F10", record.jobNumber || "-");
-  setCell(worksheet, "A11", "วันที่ใบแจ้งซ่อม", { bold: true });
-  setCell(worksheet, "B11", record.repairReportDate || "-");
+  setLabelValueCell(worksheet, "A6", "ชื่อ บริษัท/ลูกค้า", record.client || "-");
+  setLabelValueCell(worksheet, "D6", "เบอร์โทร", record.phone || "-");
+  setLabelValueCell(worksheet, "A7", "พขร.", record.driver || "-");
+  setLabelValueCell(worksheet, "A8", "ยี่ห้อรถ", record.brand || "-");
+  setLabelValueCell(worksheet, "C8", "รุ่นรถ", record.vehicleModel || "-");
+  setLabelValueCell(worksheet, "E8", "เบอร์รถ", record.vehicleNumber || "-");
+  setLabelValueCell(worksheet, "A9", "ทะเบียนรถ", record.licensePlate || "-");
+  setLabelValueCell(worksheet, "D9", "เลขตัวถัง", record.vehicleIdentificationNumber || "-");
+  setLabelValueCell(worksheet, "A10", "เลขเครื่อง", record.serialNumber || "-");
+  setLabelValueCell(worksheet, "D10", "เลขไมล์", record.mileNumber || "-");
+  setLabelValueCell(worksheet, "A11", "เลข Job", record.jobNumber || "-");
+  setLabelValueCell(worksheet, "D11", "วันที่ใบแจ้งซ่อม", record.repairReportDate || "-");
 
   applyBorderRange(worksheet, 6, 11, 1, 6);
 
   const tableHeaderRow = 13;
   const tableStartRow = 14;
+  const grandTotal = record.repairParts.reduce((sum, part) => sum + Number(part.totalPrice || 0), 0);
 
   const headers = ["ลำดับ", "รายการซ่อม", "รายการอะไหล่", "จำนวน", "ราคา/หน่วย", "ราคา", "หมายเหตุ"];
   headers.forEach((header, i) => {
@@ -351,6 +489,8 @@ async function buildTemplateSheet(
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = BORDER_THIN;
   });
+  worksheet.mergeCells(`G${tableHeaderRow}:H${tableHeaderRow}`);
+  worksheet.getCell(tableHeaderRow, 8).border = BORDER_THIN;
 
   for (let i = 0; i < pageRows.length; i += 1) {
     const row = tableStartRow + i;
@@ -363,8 +503,9 @@ async function buildTemplateSheet(
     worksheet.getCell(row, 5).value = rowData.unitPrice;
     worksheet.getCell(row, 6).value = rowData.totalPrice;
     worksheet.getCell(row, 7).value = "";
+    worksheet.mergeCells(`G${row}:H${row}`);
 
-    for (let c = 1; c <= 7; c += 1) {
+    for (let c = 1; c <= 8; c += 1) {
       const cell = worksheet.getCell(row, c);
       cell.font = { name: "TH Sarabun New", size: 13 };
       cell.alignment = {
@@ -376,7 +517,24 @@ async function buildTemplateSheet(
     }
   }
 
-  const signatureRow = tableStartRow + pageRows.length + 2;
+  let signatureRow = tableStartRow + pageRows.length + 2;
+
+  if (pageIndex === totalPages - 1) {
+    const totalRow = tableStartRow + pageRows.length;
+    worksheet.mergeCells(`A${totalRow}:E${totalRow}`);
+    worksheet.mergeCells(`F${totalRow}:H${totalRow}`);
+
+    setCell(worksheet, `A${totalRow}`, "รวมราคา", { bold: true, align: "center", fontSize: 15 });
+    setCell(worksheet, `F${totalRow}`, grandTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 }), {
+      bold: true,
+      align: "right",
+      fontSize: 15,
+    });
+
+    applyBorderRange(worksheet, totalRow, totalRow, 1, 8);
+    signatureRow = totalRow + 2;
+  }
+
   worksheet.mergeCells(`C${signatureRow}:E${signatureRow}`);
   setCell(worksheet, `C${signatureRow}`, "ลายเซ็น ............................", { align: "center", fontSize: 16 });
 
