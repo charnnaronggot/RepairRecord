@@ -54,7 +54,14 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
       onSave?.();
     } catch (err) {
       console.error(err);
-      setMessage("เกิดข้อผิดพลาดในการบันทึก — กรุณาตรวจสอบการเชื่อมต่อ Firebase"); 
+      if (
+        (err instanceof Error && err.message === "REPAIR_RECORD_NOT_FOUND") ||
+        (typeof err === "object" && err !== null && "code" in err && (err as { code?: string }).code === "not-found")
+      ) {
+        setMessage("ไม่พบรายการนี้ในระบบ (อาจถูกลบไปแล้ว) กรุณากลับไปรายการและรีโหลดใหม่");
+      } else {
+        setMessage("เกิดข้อผิดพลาดในการบันทึก — กรุณาตรวจสอบการเชื่อมต่อ Firebase");
+      }
     } finally {
       setSaving(false);
     }

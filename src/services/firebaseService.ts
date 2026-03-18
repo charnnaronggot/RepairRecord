@@ -2,6 +2,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   doc,
   updateDoc,
   deleteDoc,
@@ -36,6 +37,14 @@ export async function updateRepairRecord(
   record: Partial<RepairRecord>
 ): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, id);
+
+  const existingDoc = await getDoc(docRef);
+  if (!existingDoc.exists()) {
+    const notFoundError = new Error("REPAIR_RECORD_NOT_FOUND");
+    (notFoundError as Error & { code?: string }).code = "not-found";
+    throw notFoundError;
+  }
+
   await updateDoc(docRef, {
     ...record,
     updatedAt: serverTimestamp(),
