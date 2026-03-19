@@ -11,6 +11,8 @@ const BORDER_THIN: Partial<ExcelJS.Borders> = {
   right: { style: "thin" },
 };
 
+const DEFAULT_EXPORT_FONT = "Arial";
+
 function formatThaiDateOnly(value: string | undefined): string {
   if (!value) return "-";
   const date = new Date(value);
@@ -110,9 +112,9 @@ export function exportListToPDF(records: RepairRecord[]): void {
   const doc = new jsPDF("p", "mm", "a4");
   const title = "Repair Records (Filtered List)";
 
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.text(title, 14, 14);
-  doc.setFontSize(9);
+  doc.setFontSize(7);
   doc.text(`Total: ${records.length} records`, 14, 20);
 
   autoTable(doc, {
@@ -127,8 +129,8 @@ export function exportListToPDF(records: RepairRecord[]): void {
       record.status === "completed" ? "completed" : "pending",
       formatThaiDateOnly(record.repairReportDate),
     ]),
-    styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [44, 62, 80], textColor: 255 },
+    styles: { fontSize: 8, cellPadding: 2, font: DEFAULT_EXPORT_FONT },
+    headStyles: { fillColor: [44, 62, 80], textColor: 255, font: DEFAULT_EXPORT_FONT, fontStyle: "bold" },
     columnStyles: {
       0: { cellWidth: 10, halign: "center" },
       1: { cellWidth: 24 },
@@ -172,8 +174,8 @@ function setCell(
   const cell = worksheet.getCell(address);
   cell.value = value;
   cell.font = {
-    name: "TH Sarabun New",
-    size: options?.fontSize ?? 14,
+    name: DEFAULT_EXPORT_FONT,
+    size: options?.fontSize ?? 10,
     bold: options?.bold ?? false,
   };
   cell.alignment = {
@@ -198,11 +200,11 @@ function setLabelValueCell(
     richText: [
       {
         text: `${label} `,
-        font: { name: "TH Sarabun New", size: options?.fontSize ?? 14, bold: true },
+        font: { name: DEFAULT_EXPORT_FONT, size: options?.fontSize ?? 10, bold: true },
       },
       {
         text: String(value ?? "-"),
-        font: { name: "TH Sarabun New", size: options?.fontSize ?? 14 },
+        font: { name: DEFAULT_EXPORT_FONT, size: options?.fontSize ?? 10 },
       },
     ],
   };
@@ -485,7 +487,7 @@ async function buildTemplateSheet(
   headers.forEach((header, i) => {
     const cell = worksheet.getCell(tableHeaderRow, i + 1);
     cell.value = header;
-    cell.font = { name: "TH Sarabun New", size: 14, bold: true };
+    cell.font = { name: DEFAULT_EXPORT_FONT, size: 14, bold: true };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = BORDER_THIN;
   });
@@ -501,13 +503,20 @@ async function buildTemplateSheet(
     worksheet.getCell(row, 3).value = rowData.partText;
     worksheet.getCell(row, 4).value = rowData.quantity;
     worksheet.getCell(row, 5).value = rowData.unitPrice;
-    worksheet.getCell(row, 6).value = rowData.totalPrice;
+    
+    // Set totalPrice value or formula if empty
+    if (rowData.totalPrice) {
+      worksheet.getCell(row, 6).value = rowData.totalPrice;
+    } else {
+      worksheet.getCell(row, 6).value = { formula: `IFERROR(D${row}*E${row},"")` };
+    }
+    
     worksheet.getCell(row, 7).value = "";
     worksheet.mergeCells(`G${row}:H${row}`);
 
     for (let c = 1; c <= 8; c += 1) {
       const cell = worksheet.getCell(row, c);
-      cell.font = { name: "TH Sarabun New", size: 13 };
+      cell.font = { name: DEFAULT_EXPORT_FONT, size: 13 };
       cell.alignment = {
         horizontal: c === 1 || c >= 4 ? "center" : "left",
         vertical: "middle",
