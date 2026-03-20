@@ -11,8 +11,6 @@ const BORDER_THIN: Partial<ExcelJS.Borders> = {
   right: { style: "thin" },
 };
 
-const DEFAULT_EXPORT_FONT = "Arial";
-
 function formatThaiDateOnly(value: string | undefined): string {
   if (!value) return "-";
   const date = new Date(value);
@@ -112,9 +110,9 @@ export function exportListToPDF(records: RepairRecord[]): void {
   const doc = new jsPDF("p", "mm", "a4");
   const title = "Repair Records (Filtered List)";
 
-  doc.setFontSize(12);
+  doc.setFontSize(14);
   doc.text(title, 14, 14);
-  doc.setFontSize(7);
+  doc.setFontSize(9);
   doc.text(`Total: ${records.length} records`, 14, 20);
 
   autoTable(doc, {
@@ -129,8 +127,8 @@ export function exportListToPDF(records: RepairRecord[]): void {
       record.status === "completed" ? "completed" : "pending",
       formatThaiDateOnly(record.repairReportDate),
     ]),
-    styles: { fontSize: 8, cellPadding: 2, font: DEFAULT_EXPORT_FONT },
-    headStyles: { fillColor: [44, 62, 80], textColor: 255, font: DEFAULT_EXPORT_FONT, fontStyle: "bold" },
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [44, 62, 80], textColor: 255 },
     columnStyles: {
       0: { cellWidth: 10, halign: "center" },
       1: { cellWidth: 24 },
@@ -174,8 +172,8 @@ function setCell(
   const cell = worksheet.getCell(address);
   cell.value = value;
   cell.font = {
-    name: DEFAULT_EXPORT_FONT,
-    size: options?.fontSize ?? 10,
+    name: "TH Sarabun New",
+    size: options?.fontSize ?? 14,
     bold: options?.bold ?? false,
   };
   cell.alignment = {
@@ -200,11 +198,11 @@ function setLabelValueCell(
     richText: [
       {
         text: `${label} `,
-        font: { name: DEFAULT_EXPORT_FONT, size: options?.fontSize ?? 10, bold: true },
+        font: { name: "TH Sarabun New", size: options?.fontSize ?? 14, bold: true },
       },
       {
         text: String(value ?? "-"),
-        font: { name: DEFAULT_EXPORT_FONT, size: options?.fontSize ?? 10 },
+        font: { name: "TH Sarabun New", size: options?.fontSize ?? 14 },
       },
     ],
   };
@@ -227,36 +225,82 @@ interface ExcelRowData {
   quantity: string | number;
   unitPrice: string | number;
   totalPrice: string | number;
+  rowUnits: number;
+  rowHeight: number;
 }
 
-const PAGE_ROW_CAPACITY = 20;
+const PAGE_ROW_CAPACITY_UNITS = 28;
+const BASE_TABLE_ROW_HEIGHT = 18;
+const TABLE_LINE_HEIGHT = 14;
+const REPAIR_TEXT_CHARS_PER_LINE = 32;
+const PART_TEXT_CHARS_PER_LINE = 32;
+
+function estimateTextLines(text: string, charsPerLine: number): number {
+  if (!text) return 1;
+
+  return text
+    .split("\n")
+    .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
+}
+
+function estimateRowMetrics(repairText: string, partText: string): { rowUnits: number; rowHeight: number } {
+  const repairLines = estimateTextLines(repairText, REPAIR_TEXT_CHARS_PER_LINE);
+  const partLines = estimateTextLines(partText, PART_TEXT_CHARS_PER_LINE);
+  const lines = Math.max(1, repairLines, partLines);
+  const rowHeight = Math.max(BASE_TABLE_ROW_HEIGHT, lines * TABLE_LINE_HEIGHT);
+
+  return {
+    rowUnits: Math.max(1, Math.ceil(rowHeight / BASE_TABLE_ROW_HEIGHT)),
+    rowHeight,
+  };
+}
 
 function buildExcelRows(record: RepairRecord): ExcelRowData[] {
-  const contentCount = Math.max(record.repairItems.length, record.repairParts.length);
-  const normalizedCount = Math.max(
-    PAGE_ROW_CAPACITY,
-    Math.ceil(Math.max(contentCount, 1) / PAGE_ROW_CAPACITY) * PAGE_ROW_CAPACITY
-  );
+  const contentCount = Math.max(record.repairItems.length, record.repairParts.length, 1);
 
-  return Array.from({ length: normalizedCount }, (_, i) => {
+  return Array.from({ length: contentCount }, (_, i) => {
     const item = record.repairItems[i];
     const part = record.repairParts[i];
+    const repairText = item?.description || "";
+    const partText = part?.partName || "";
+    const metrics = estimateRowMetrics(repairText, partText);
+
     return {
       index: i + 1,
-      repairText: item?.description || "",
-      partText: part?.partName || "",
+      repairText,
+      partText,
       quantity: part?.quantity ?? "",
       unitPrice: part?.unitPrice ?? "",
       totalPrice: part?.totalPrice ?? "",
+      rowUnits: metrics.rowUnits,
+      rowHeight: metrics.rowHeight,
     };
   });
 }
 
-function toPageChunks<T>(items: T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    result.push(items.slice(i, i + size));
+function toPageChunks(items: ExcelRowData[], maxUnits: number): ExcelRowData[][] {
+  const result: ExcelRowData[][] = [];
+  let currentPage: ExcelRowData[] = [];
+  let currentUnits = 0;
+
+  for (const item of items) {
+    const itemUnits = Math.max(1, item.rowUnits);
+    const exceed = currentUnits + itemUnits > maxUnits;
+
+    if (currentPage.length > 0 && exceed) {
+      result.push(currentPage);
+      currentPage = [];
+      currentUnits = 0;
+    }
+
+    currentPage.push(item);
+    currentUnits += itemUnits;
   }
+
+  if (currentPage.length > 0) {
+    result.push(currentPage);
+  }
+
   return result;
 }
 
@@ -409,7 +453,7 @@ async function buildTemplateSheet(
     orientation: "portrait",
     fitToPage: true,
     fitToWidth: 1,
-    fitToHeight: 1,
+    fitToHeight: 0,
     margins: {
       left: 0.25,
       right: 0.25,
@@ -486,8 +530,8 @@ async function buildTemplateSheet(
   const headers = ["ลำดับ", "รายการซ่อม", "รายการอะไหล่", "จำนวน", "ราคา/หน่วย", "ราคา", "หมายเหตุ"];
   headers.forEach((header, i) => {
     const cell = worksheet.getCell(tableHeaderRow, i + 1);
-    cell.value = header;
-    cell.font = { name: DEFAULT_EXPORT_FONT, size: 14, bold: true };
+    cell.value = header; 
+    cell.font = { name: "TH Sarabun New", size: 14, bold: true };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = BORDER_THIN;
   });
@@ -497,26 +541,20 @@ async function buildTemplateSheet(
   for (let i = 0; i < pageRows.length; i += 1) {
     const row = tableStartRow + i;
     const rowData = pageRows[i];
+    worksheet.getRow(row).height = rowData.rowHeight;
 
     worksheet.getCell(row, 1).value = rowData.index;
     worksheet.getCell(row, 2).value = rowData.repairText;
     worksheet.getCell(row, 3).value = rowData.partText;
     worksheet.getCell(row, 4).value = rowData.quantity;
     worksheet.getCell(row, 5).value = rowData.unitPrice;
-    
-    // Set totalPrice value or formula if empty
-    if (rowData.totalPrice) {
-      worksheet.getCell(row, 6).value = rowData.totalPrice;
-    } else {
-      worksheet.getCell(row, 6).value = { formula: `IFERROR(D${row}*E${row},"")` };
-    }
-    
+    worksheet.getCell(row, 6).value = rowData.totalPrice;
     worksheet.getCell(row, 7).value = "";
     worksheet.mergeCells(`G${row}:H${row}`);
 
     for (let c = 1; c <= 8; c += 1) {
       const cell = worksheet.getCell(row, c);
-      cell.font = { name: DEFAULT_EXPORT_FONT, size: 13 };
+      cell.font = { name: "TH Sarabun New", size: 11 };
       cell.alignment = {
         horizontal: c === 1 || c >= 4 ? "center" : "left",
         vertical: "middle",
@@ -561,7 +599,7 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
 
   for (let i = 0; i < records.length; i += 1) {
     const rows = buildExcelRows(records[i]);
-    const pages = toPageChunks(rows, PAGE_ROW_CAPACITY);
+    const pages = toPageChunks(rows, PAGE_ROW_CAPACITY_UNITS);
     for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
       await buildTemplateSheet(
         workbook,
