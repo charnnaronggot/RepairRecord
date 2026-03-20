@@ -296,11 +296,27 @@ export function generateRepairPDFFromHTML(htmlElement: HTMLElement): void {
     const targets = pageElements.length > 0 ? pageElements : [htmlElement];
 
     for (let i = 0; i < targets.length; i += 1) {
-      const canvas = await html2canvas(targets[i], {
-        scale: Math.max(2, Math.min(window.devicePixelRatio || 1, 3)),
+      const target = targets[i];
+      const targetWidth = target.offsetWidth;
+      const targetHeight = target.offsetHeight;
+
+      const canvas = await html2canvas(target, {
+        scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
         logging: false,
+        width: targetWidth,
+        height: targetHeight,
+        windowWidth: targetWidth,
+        windowHeight: targetHeight,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        onclone: (clonedDoc) => {
+          const root = clonedDoc.getElementById("repair-pdf-template");
+          if (root) {
+            root.style.margin = "0";
+          }
+        },
       });
 
       if (i > 0) {
@@ -308,7 +324,22 @@ export function generateRepairPDFFromHTML(htmlElement: HTMLElement): void {
       }
 
       const imgData = canvas.toDataURL("image/png");
-      doc.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+      const canvasAspectRatio = canvas.width / canvas.height;
+      const pageAspectRatio = pageWidth / pageHeight;
+
+      let renderWidth = pageWidth;
+      let renderHeight = pageHeight;
+
+      if (canvasAspectRatio > pageAspectRatio) {
+        renderHeight = pageWidth / canvasAspectRatio;
+      } else {
+        renderWidth = pageHeight * canvasAspectRatio;
+      }
+
+      const x = (pageWidth - renderWidth) / 2;
+      const y = (pageHeight - renderHeight) / 2;
+
+      doc.addImage(imgData, "PNG", x, y, renderWidth, renderHeight, undefined, "FAST");
     }
 
     doc.save(`repair_report_${Date.now()}.pdf`);
