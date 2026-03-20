@@ -172,13 +172,15 @@ function setCell(
   const cell = worksheet.getCell(address);
   cell.value = value;
   cell.font = {
-    name: "TH Sarabun New",
-    size: options?.fontSize ?? 14,
+    name: "Arial",
+    size: options?.fontSize ?? 10,
+    
     bold: options?.bold ?? false,
   };
   cell.alignment = {
     vertical: "middle",
     horizontal: options?.align ?? "left",
+    indent: options?.align === "center" ? 0 : 1,
     wrapText: true,
   };
 }
@@ -198,11 +200,11 @@ function setLabelValueCell(
     richText: [
       {
         text: `${label} `,
-        font: { name: "TH Sarabun New", size: options?.fontSize ?? 14, bold: true },
+        font: { name: "Arial", size: options?.fontSize ?? 10, bold: true },
       },
       {
         text: String(value ?? "-"),
-        font: { name: "TH Sarabun New", size: options?.fontSize ?? 14 },
+        font: { name: "Arial", size: options?.fontSize ?? 10 },
       },
     ],
   };
@@ -229,11 +231,13 @@ interface ExcelRowData {
   rowHeight: number;
 }
 
-const PAGE_ROW_CAPACITY_UNITS = 28;
+const PAGE_ROW_CAPACITY_UNITS = 18;
 const BASE_TABLE_ROW_HEIGHT = 18;
 const TABLE_LINE_HEIGHT = 14;
 const REPAIR_TEXT_CHARS_PER_LINE = 32;
 const PART_TEXT_CHARS_PER_LINE = 32;
+const INFO_SECTION_ROW_HEIGHT = 22;
+const SIGNATURE_BOTTOM_ROW = 33;
 
 function estimateTextLines(text: string, charsPerLine: number): number {
   if (!text) return 1;
@@ -453,7 +457,7 @@ async function buildTemplateSheet(
     orientation: "portrait",
     fitToPage: true,
     fitToWidth: 1,
-    fitToHeight: 0,
+    fitToHeight: 1,
     margins: {
       left: 0.25,
       right: 0.25,
@@ -481,12 +485,18 @@ async function buildTemplateSheet(
   worksheet.mergeCells("C2:F2");
   worksheet.mergeCells("C3:F3");
   worksheet.mergeCells("C4:F4");
+
+  worksheet.getRow(1).height = 28;
+  worksheet.getRow(2).height = 20;
+  worksheet.getRow(3).height = 20;
+  worksheet.getRow(4).height = 30;
+
   await addContainedImageToRange(workbook, worksheet, logoDataUrl, "jpeg", 1, 1, 2, 4);
 
-  setCell(worksheet, "C1", "บริษัท ประธานพรเซอร์วิซ จำกัด", { bold: true, fontSize: 18, align: "center" });
-  setCell(worksheet, "C2", "124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110", { align: "center" });
-  setCell(worksheet, "C3", "เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477", { align: "center" });
-  setCell(worksheet, "C4", "ใบแจ้งซ่อม", { bold: true, fontSize: 22, align: "center" });
+  setCell(worksheet, "C1", "บริษัท ประธานพรเซอร์วิซ จำกัด", { bold: true, fontSize: 16, align: "center" });
+  setCell(worksheet, "C2", "124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110", { fontSize: 10, align: "center" });
+  setCell(worksheet, "C3", "เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477", { fontSize: 10, align: "center" });
+  setCell(worksheet, "C4", "ใบแจ้งซ่อม", { bold: true, fontSize: 16 , align: "center" });
 
   worksheet.mergeCells("G6:H11");
 
@@ -508,6 +518,10 @@ async function buildTemplateSheet(
   worksheet.mergeCells("A11:C11");
   worksheet.mergeCells("D11:F11");
 
+  for (let row = 6; row <= 11; row += 1) {
+    worksheet.getRow(row).height = INFO_SECTION_ROW_HEIGHT;
+  }
+
   setLabelValueCell(worksheet, "A6", "ชื่อ บริษัท/ลูกค้า", record.client || "-");
   setLabelValueCell(worksheet, "D6", "เบอร์โทร", record.phone || "-");
   setLabelValueCell(worksheet, "A7", "พขร.", record.driver || "-");
@@ -527,11 +541,14 @@ async function buildTemplateSheet(
   const tableStartRow = 14;
   const grandTotal = record.repairParts.reduce((sum, part) => sum + Number(part.totalPrice || 0), 0);
 
+
+
   const headers = ["ลำดับ", "รายการซ่อม", "รายการอะไหล่", "จำนวน", "ราคา/หน่วย", "ราคา", "หมายเหตุ"];
+  worksheet.getRow(tableHeaderRow).height = 24;
   headers.forEach((header, i) => {
     const cell = worksheet.getCell(tableHeaderRow, i + 1);
     cell.value = header; 
-    cell.font = { name: "TH Sarabun New", size: 14, bold: true };
+    cell.font = { name: "Arial", size: 11, bold: true };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = BORDER_THIN;
   });
@@ -554,7 +571,7 @@ async function buildTemplateSheet(
 
     for (let c = 1; c <= 8; c += 1) {
       const cell = worksheet.getCell(row, c);
-      cell.font = { name: "TH Sarabun New", size: 11 };
+      cell.font = { name: "Arial", size: 10 };
       cell.alignment = {
         horizontal: c === 1 || c >= 4 ? "center" : "left",
         vertical: "middle",
@@ -564,28 +581,33 @@ async function buildTemplateSheet(
     }
   }
 
-  let signatureRow = tableStartRow + pageRows.length + 2;
+  const signatureRow = SIGNATURE_BOTTOM_ROW;
 
   if (pageIndex === totalPages - 1) {
-    const totalRow = tableStartRow + pageRows.length;
+    const totalRow = Math.min(tableStartRow + pageRows.length, signatureRow - 1);
     worksheet.mergeCells(`A${totalRow}:E${totalRow}`);
     worksheet.mergeCells(`F${totalRow}:H${totalRow}`);
 
-    setCell(worksheet, `A${totalRow}`, "รวมราคา", { bold: true, align: "center", fontSize: 15 });
+    setCell(worksheet, `A${totalRow}`, "รวมราคา", { bold: true, align: "center", fontSize: 10 });
     setCell(worksheet, `F${totalRow}`, grandTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 }), {
       bold: true,
       align: "right",
-      fontSize: 15,
+      fontSize: 10,
     });
 
     applyBorderRange(worksheet, totalRow, totalRow, 1, 8);
-    signatureRow = totalRow + 2;
   }
 
   worksheet.mergeCells(`C${signatureRow}:E${signatureRow}`);
-  setCell(worksheet, `C${signatureRow}`, "ลายเซ็น ............................", { align: "center", fontSize: 16 });
+  setCell(worksheet, `C${signatureRow}`, "ลายเซ็น ............................", { align: "center", fontSize: 12 });
+  worksheet.getRow(signatureRow).height = 24;
+  worksheet.getCell(`C${signatureRow}`).alignment = {
+    horizontal: "center",
+    vertical: "bottom",
+    wrapText: true,
+  };
 
-  worksheet.pageSetup.printArea = `A1:H${signatureRow + 1}`;
+  worksheet.pageSetup.printArea = `A1:H${SIGNATURE_BOTTOM_ROW}`;
 }
 
 export async function exportToExcel(records: RepairRecord[]): Promise<void> {
