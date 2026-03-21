@@ -3,14 +3,25 @@ import html2canvas from "html2canvas";
 import type { RepairRecord } from "../types/RepairRecord";
 import autoTable from "jspdf-autotable";
 
+const DEFAULT_EXPORT_FONT = "Arial";
+
+const PDF_FONT_SIZE = {
+  title: 20,
+  subtitle: 11,
+  body: 11,
+  sectionTitle: 13,
+  table: 10,
+  footer: 9,
+} as const;
+
 export function generateRepairPDF(record: RepairRecord): void {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
 
   // ─── Header ───
-  doc.setFontSize(18);
+  doc.setFontSize(PDF_FONT_SIZE.title);
   doc.text("ใบรายงานการซ่อม", pageWidth / 2, 20, { align: "center" });
-  doc.setFontSize(10);
+  doc.setFontSize(PDF_FONT_SIZE.subtitle);
   doc.text("Repair Report", pageWidth / 2, 26, { align: "center" });
 
   doc.setDrawColor(44, 62, 80);
@@ -18,7 +29,7 @@ export function generateRepairPDF(record: RepairRecord): void {
   doc.line(15, 30, pageWidth - 15, 30);
 
   // ─── Info section ───
-  doc.setFontSize(10);
+  doc.setFontSize(PDF_FONT_SIZE.body);
   const startY = 38;
   const col1X = 18;
   const col2X = pageWidth / 2 + 5;
@@ -44,16 +55,16 @@ export function generateRepairPDF(record: RepairRecord): void {
   ];
 
   leftFields.forEach(([label, value], i) => {
-    doc.setFont("helvetica", "bold");
+    doc.setFont(DEFAULT_EXPORT_FONT, "bold");
     doc.text(`${label}:`, col1X, startY + i * lineH);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(DEFAULT_EXPORT_FONT, "normal");
     doc.text(value || "-", col1X + 35, startY + i * lineH);
   });
 
   rightFields.forEach(([label, value], i) => {
-    doc.setFont("helvetica", "bold");
+    doc.setFont(DEFAULT_EXPORT_FONT, "bold");
     doc.text(`${label}:`, col2X, startY + i * lineH);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(DEFAULT_EXPORT_FONT, "normal");
     doc.text(value || "-", col2X + 35, startY + i * lineH);
   });
 
@@ -76,8 +87,8 @@ export function generateRepairPDF(record: RepairRecord): void {
   doc.setDrawColor(44, 62, 80);
   doc.line(15, infoEndY, pageWidth - 15, infoEndY);
 
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
+  doc.setFontSize(PDF_FONT_SIZE.sectionTitle);
+  doc.setFont(DEFAULT_EXPORT_FONT, "bold");
   doc.text("Repair Items (แรงงาน/การซ่อม)", 18, infoEndY + 8);
 
   const itemTableBody = record.repairItems.map((item, idx) => [
@@ -104,7 +115,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     theme: "grid",
     headStyles: { fillColor: [44, 62, 80], textColor: 255, fontStyle: "bold" },
     footStyles: { fillColor: [236, 240, 241], textColor: [44, 62, 80], fontStyle: "bold" },
-    styles: { fontSize: 9, cellPadding: 3 },
+    styles: { fontSize: PDF_FONT_SIZE.table, cellPadding: 3 },
     columnStyles: {
       0: { halign: "center", cellWidth: 12 },
       2: { halign: "center", cellWidth: 18 },
@@ -117,8 +128,8 @@ export function generateRepairPDF(record: RepairRecord): void {
 
   // ─── Repair Parts Table ───
   const partsTableStartY = (doc as any).lastAutoTable.finalY + 8;
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
+  doc.setFontSize(PDF_FONT_SIZE.sectionTitle);
+  doc.setFont(DEFAULT_EXPORT_FONT, "bold");
   doc.text("Parts (อะไหล่/วัสดุ)", 18, partsTableStartY);
 
   const partTableBody = record.repairParts.map((part, idx) => [
@@ -150,7 +161,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     theme: "grid",
     headStyles: { fillColor: [52, 152, 219], textColor: 255, fontStyle: "bold" },
     footStyles: { fillColor: [236, 240, 241], textColor: [44, 62, 80], fontStyle: "bold" },
-    styles: { fontSize: 9, cellPadding: 3 },
+    styles: { fontSize: PDF_FONT_SIZE.table, cellPadding: 3 },
     columnStyles: {
       0: { halign: "center", cellWidth: 12 },
       2: { halign: "center", cellWidth: 18 },
@@ -163,8 +174,8 @@ export function generateRepairPDF(record: RepairRecord): void {
 
   // ─── Footer ───
   const pageHeight = doc.internal.pageSize.getHeight();
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
+  doc.setFontSize(PDF_FONT_SIZE.footer);
+  doc.setFont(DEFAULT_EXPORT_FONT, "normal");
   doc.setTextColor(150);
   doc.text(
     `Generated on ${new Date().toLocaleString("th-TH")} — Repair Record System`,
@@ -285,11 +296,27 @@ export function generateRepairPDFFromHTML(htmlElement: HTMLElement): void {
     const targets = pageElements.length > 0 ? pageElements : [htmlElement];
 
     for (let i = 0; i < targets.length; i += 1) {
-      const canvas = await html2canvas(targets[i], {
-        scale: Math.max(2, Math.min(window.devicePixelRatio || 1, 3)),
+      const target = targets[i];
+      const targetWidth = target.offsetWidth;
+      const targetHeight = target.offsetHeight;
+
+      const canvas = await html2canvas(target, {
+        scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
         logging: false,
+        width: targetWidth,
+        height: targetHeight,
+        windowWidth: targetWidth,
+        windowHeight: targetHeight,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        onclone: (clonedDoc) => {
+          const root = clonedDoc.getElementById("repair-pdf-template");
+          if (root) {
+            root.style.margin = "0";
+          }
+        },
       });
 
       if (i > 0) {
@@ -297,7 +324,22 @@ export function generateRepairPDFFromHTML(htmlElement: HTMLElement): void {
       }
 
       const imgData = canvas.toDataURL("image/png");
-      doc.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+      const canvasAspectRatio = canvas.width / canvas.height;
+      const pageAspectRatio = pageWidth / pageHeight;
+
+      let renderWidth = pageWidth;
+      let renderHeight = pageHeight;
+
+      if (canvasAspectRatio > pageAspectRatio) {
+        renderHeight = pageWidth / canvasAspectRatio;
+      } else {
+        renderWidth = pageHeight * canvasAspectRatio;
+      }
+
+      const x = (pageWidth - renderWidth) / 2;
+      const y = (pageHeight - renderHeight) / 2;
+
+      doc.addImage(imgData, "PNG", x, y, renderWidth, renderHeight, undefined, "FAST");
     }
 
     doc.save(`repair_report_${Date.now()}.pdf`);

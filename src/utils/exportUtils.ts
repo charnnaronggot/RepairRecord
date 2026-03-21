@@ -172,13 +172,15 @@ function setCell(
   const cell = worksheet.getCell(address);
   cell.value = value;
   cell.font = {
-    name: "TH Sarabun New",
-    size: options?.fontSize ?? 14,
+    name: "Arial",
+    size: options?.fontSize ?? 10,
+    
     bold: options?.bold ?? false,
   };
   cell.alignment = {
     vertical: "middle",
     horizontal: options?.align ?? "left",
+    indent: options?.align === "center" ? 0 : 1,
     wrapText: true,
   };
 }
@@ -198,11 +200,11 @@ function setLabelValueCell(
     richText: [
       {
         text: `${label} `,
-        font: { name: "TH Sarabun New", size: options?.fontSize ?? 14, bold: true },
+        font: { name: "Arial", size: options?.fontSize ?? 10, bold: true },
       },
       {
         text: String(value ?? "-"),
-        font: { name: "TH Sarabun New", size: options?.fontSize ?? 14 },
+        font: { name: "Arial", size: options?.fontSize ?? 10 },
       },
     ],
   };
@@ -218,6 +220,21 @@ function sheetNameForRecord(record: RepairRecord, index: number): string {
   return base.slice(0, 31);
 }
 
+function sheetNameForRecordPage(
+  record: RepairRecord,
+  index: number,
+  pageIndex: number,
+  totalPages: number
+): string {
+  const baseName = sheetNameForRecord(record, index);
+  const pageSuffix = totalPages > 1 ? `_P${pageIndex + 1}` : "";
+  return `${baseName}${pageSuffix}`.slice(0, 31);
+}
+
+function sheetNameForFormula(name: string): string {
+  return `'${name.replace(/'/g, "''")}'`;
+}
+
 interface ExcelRowData {
   index: number;
   repairText: string;
@@ -225,36 +242,149 @@ interface ExcelRowData {
   quantity: string | number;
   unitPrice: string | number;
   totalPrice: string | number;
+  rowUnits: number;
+  rowHeight: number;
 }
 
-const PAGE_ROW_CAPACITY = 20;
+const BASE_TABLE_ROW_HEIGHT = 20;
+const TABLE_LINE_HEIGHT = 14;
+const REPAIR_TEXT_CHARS_PER_LINE = 32;
+const PART_TEXT_CHARS_PER_LINE = 32;
+const INFO_SECTION_ROW_HEIGHT = 22;
+const SIGNATURE_BOTTOM_ROW = 33;
+const DETAIL_START_ROW = 14;
+const DETAIL_END_ROW = SIGNATURE_BOTTOM_ROW - 2;
+const PAGE_ROW_CAPACITY_UNITS = DETAIL_END_ROW - DETAIL_START_ROW + 1;
+
+function estimateTextLines(text: string, charsPerLine: number): number {
+  if (!text) return 1;
+
+  return text
+    .split("\n")
+    .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
+}
+
+function estimateRowMetrics(repairText: string, partText: string): { rowUnits: number; rowHeight: number } {
+  const repairLines = estimateTextLines(repairText, REPAIR_TEXT_CHARS_PER_LINE);
+  const partLines = estimateTextLines(partText, PART_TEXT_CHARS_PER_LINE);
+  const lines = Math.max(1, repairLines, partLines);
+  const rowHeight = Math.max(BASE_TABLE_ROW_HEIGHT, lines * TABLE_LINE_HEIGHT);
+
+  return {
+    rowUnits: Math.max(1, Math.ceil(rowHeight / BASE_TABLE_ROW_HEIGHT)),
+    rowHeight,
+  };
+}
 
 function buildExcelRows(record: RepairRecord): ExcelRowData[] {
-  const contentCount = Math.max(record.repairItems.length, record.repairParts.length);
-  const normalizedCount = Math.max(
-    PAGE_ROW_CAPACITY,
-    Math.ceil(Math.max(contentCount, 1) / PAGE_ROW_CAPACITY) * PAGE_ROW_CAPACITY
-  );
+  const contentCount = Math.max(record.repairItems.length, record.repairParts.length, 1);
 
-  return Array.from({ length: normalizedCount }, (_, i) => {
+  const rows = Array.from({ length: contentCount }, (_, i) => {
     const item = record.repairItems[i];
     const part = record.repairParts[i];
+    const repairText = item?.description || "";
+    const partText = part?.partName || "";
+    const quantity = part?.quantity ?? "";
+    const unitPrice = part?.unitPrice ?? "";
+    const totalPrice = part?.totalPrice ?? "";
+
+    const hasData =
+      repairText.trim() !== "" ||
+      partText.trim() !== "" ||
+      String(quantity).trim() !== "" ||
+      String(unitPrice).trim() !== "" ||
+      String(totalPrice).trim() !== "";
+
     return {
-      index: i + 1,
-      repairText: item?.description || "",
-      partText: part?.partName || "",
-      quantity: part?.quantity ?? "",
-      unitPrice: part?.unitPrice ?? "",
-      totalPrice: part?.totalPrice ?? "",
+      repairText,
+      partText,
+      quantity,
+      unitPrice,
+      totalPrice,
+      hasData,
+    };
+  }).filter((row) => row.hasData);
+
+  if (rows.length === 0) {
+    const metrics = estimateRowMetrics("", "");
+    return [
+      {
+        index: 1,
+        repairText: "",
+        partText: "",
+        quantity: "",
+        unitPrice: "",
+        totalPrice: "",
+        rowUnits: metrics.rowUnits,
+        rowHeight: metrics.rowHeight,
+      },
+    ];
+  }
+
+  return rows.map((row, index) => {
+    const metrics = estimateRowMetrics(row.repairText, row.partText);
+
+    return {
+      index: index + 1,
+      repairText: row.repairText,
+      partText: row.partText,
+      quantity: row.quantity,
+      unitPrice: row.unitPrice,
+      totalPrice: row.totalPrice,
+      rowUnits: metrics.rowUnits,
+      rowHeight: metrics.rowHeight,
     };
   });
 }
 
-function toPageChunks<T>(items: T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    result.push(items.slice(i, i + size));
+function toPageChunks(items: ExcelRowData[], maxUnits: number): ExcelRowData[][] {
+  const result: ExcelRowData[][] = [];
+  let currentPage: ExcelRowData[] = [];
+  let currentUnits = 0;
+  let runningIndex = 1;
+
+  for (const item of items) {
+    const itemUnits = Math.max(1, item.rowUnits);
+    const exceed = currentUnits + itemUnits > maxUnits;
+
+    if (currentPage.length > 0 && exceed) {
+      result.push(currentPage);
+      currentPage = [];
+      currentUnits = 0;
+    }
+
+    currentPage.push({
+      ...item,
+      index: runningIndex,
+    });
+    runningIndex += 1;
+    currentUnits += itemUnits;
+
+    if (currentUnits >= maxUnits) {
+      result.push(currentPage);
+      currentPage = [];
+      currentUnits = 0;
+    }
   }
+
+  if (currentPage.length > 0) {
+    while (currentUnits < maxUnits) {
+      currentPage.push({
+        index: runningIndex,
+        repairText: "",
+        partText: "",
+        quantity: "",
+        unitPrice: "",
+        totalPrice: "",
+        rowUnits: 1,
+        rowHeight: BASE_TABLE_ROW_HEIGHT,
+      });
+      runningIndex += 1;
+      currentUnits += 1;
+    }
+    result.push(currentPage);
+  }
+
   return result;
 }
 
@@ -397,10 +527,8 @@ async function buildTemplateSheet(
   totalPages: number,
   pageRows: ExcelRowData[],
   logoDataUrl: string
-): Promise<void> {
-  const baseName = sheetNameForRecord(record, index);
-  const pageSuffix = totalPages > 1 ? `_P${pageIndex + 1}` : "";
-  const worksheet = workbook.addWorksheet(`${baseName}${pageSuffix}`.slice(0, 31));
+): Promise<string> {
+  const worksheet = workbook.addWorksheet(sheetNameForRecordPage(record, index, pageIndex, totalPages));
 
   worksheet.pageSetup = {
     paperSize: 9,
@@ -435,12 +563,18 @@ async function buildTemplateSheet(
   worksheet.mergeCells("C2:F2");
   worksheet.mergeCells("C3:F3");
   worksheet.mergeCells("C4:F4");
+
+  worksheet.getRow(1).height = 28;
+  worksheet.getRow(2).height = 20;
+  worksheet.getRow(3).height = 20;
+  worksheet.getRow(4).height = 30;
+
   await addContainedImageToRange(workbook, worksheet, logoDataUrl, "jpeg", 1, 1, 2, 4);
 
-  setCell(worksheet, "C1", "บริษัท ประธานพรเซอร์วิซ จำกัด", { bold: true, fontSize: 18, align: "center" });
-  setCell(worksheet, "C2", "124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110", { align: "center" });
-  setCell(worksheet, "C3", "เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477", { align: "center" });
-  setCell(worksheet, "C4", "ใบแจ้งซ่อม", { bold: true, fontSize: 22, align: "center" });
+  setCell(worksheet, "C1", "บริษัท ประธานพรเซอร์วิซ จำกัด", { bold: true, fontSize: 16, align: "center" });
+  setCell(worksheet, "C2", "124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110", { fontSize: 10, align: "center" });
+  setCell(worksheet, "C3", "เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477", { fontSize: 10, align: "center" });
+  setCell(worksheet, "C4", "ใบแจ้งซ่อม", { bold: true, fontSize: 16 , align: "center" });
 
   worksheet.mergeCells("G6:H11");
 
@@ -462,6 +596,10 @@ async function buildTemplateSheet(
   worksheet.mergeCells("A11:C11");
   worksheet.mergeCells("D11:F11");
 
+  for (let row = 6; row <= 11; row += 1) {
+    worksheet.getRow(row).height = INFO_SECTION_ROW_HEIGHT;
+  }
+
   setLabelValueCell(worksheet, "A6", "ชื่อ บริษัท/ลูกค้า", record.client || "-");
   setLabelValueCell(worksheet, "D6", "เบอร์โทร", record.phone || "-");
   setLabelValueCell(worksheet, "A7", "พขร.", record.driver || "-");
@@ -478,14 +616,17 @@ async function buildTemplateSheet(
   applyBorderRange(worksheet, 6, 11, 1, 6);
 
   const tableHeaderRow = 13;
-  const tableStartRow = 14;
+  const tableStartRow = DETAIL_START_ROW;
   const grandTotal = record.repairParts.reduce((sum, part) => sum + Number(part.totalPrice || 0), 0);
 
+
+
   const headers = ["ลำดับ", "รายการซ่อม", "รายการอะไหล่", "จำนวน", "ราคา/หน่วย", "ราคา", "หมายเหตุ"];
+  worksheet.getRow(tableHeaderRow).height = 24;
   headers.forEach((header, i) => {
     const cell = worksheet.getCell(tableHeaderRow, i + 1);
-    cell.value = header;
-    cell.font = { name: "TH Sarabun New", size: 14, bold: true };
+    cell.value = header; 
+    cell.font = { name: "Arial", size: 11, bold: true };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = BORDER_THIN;
   });
@@ -494,20 +635,27 @@ async function buildTemplateSheet(
 
   for (let i = 0; i < pageRows.length; i += 1) {
     const row = tableStartRow + i;
+    if (row > DETAIL_END_ROW) {
+      break;
+    }
     const rowData = pageRows[i];
+    worksheet.getRow(row).height = rowData.rowHeight;
 
-    worksheet.getCell(row, 1).value = rowData.index;
+    worksheet.getCell(row, 1).value = rowData.index > 0 ? rowData.index : "";
     worksheet.getCell(row, 2).value = rowData.repairText;
     worksheet.getCell(row, 3).value = rowData.partText;
     worksheet.getCell(row, 4).value = rowData.quantity;
     worksheet.getCell(row, 5).value = rowData.unitPrice;
-    worksheet.getCell(row, 6).value = rowData.totalPrice;
+    worksheet.getCell(row, 6).value = {
+      formula: `IF(AND(D${row}<>"",E${row}<>""),D${row}*E${row},"")`,
+      result: rowData.totalPrice ? Number(rowData.totalPrice) : undefined,
+    };
     worksheet.getCell(row, 7).value = "";
     worksheet.mergeCells(`G${row}:H${row}`);
 
     for (let c = 1; c <= 8; c += 1) {
       const cell = worksheet.getCell(row, c);
-      cell.font = { name: "TH Sarabun New", size: 13 };
+      cell.font = { name: "Arial", size: 10 };
       cell.alignment = {
         horizontal: c === 1 || c >= 4 ? "center" : "left",
         vertical: "middle",
@@ -517,28 +665,37 @@ async function buildTemplateSheet(
     }
   }
 
-  let signatureRow = tableStartRow + pageRows.length + 2;
+  const signatureRow = SIGNATURE_BOTTOM_ROW;
 
   if (pageIndex === totalPages - 1) {
-    const totalRow = tableStartRow + pageRows.length;
+    const totalRow = signatureRow - 1;
+    const lastDataRow = DETAIL_END_ROW;
     worksheet.mergeCells(`A${totalRow}:E${totalRow}`);
     worksheet.mergeCells(`F${totalRow}:H${totalRow}`);
 
-    setCell(worksheet, `A${totalRow}`, "รวมราคา", { bold: true, align: "center", fontSize: 15 });
-    setCell(worksheet, `F${totalRow}`, grandTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 }), {
-      bold: true,
-      align: "right",
-      fontSize: 15,
-    });
+    setCell(worksheet, `A${totalRow}`, "รวมราคา", { bold: true, align: "center", fontSize: 10 });
+    worksheet.getCell(`F${totalRow}`).value = {
+      formula: `SUMIFS(F${tableStartRow}:F${lastDataRow},A${tableStartRow}:A${lastDataRow},"<>")`,
+      result: grandTotal,
+    };
+    worksheet.getCell(`F${totalRow}`).font = { name: "Arial", size: 10, bold: true };
+    worksheet.getCell(`F${totalRow}`).alignment = { horizontal: "right", vertical: "middle" };
 
     applyBorderRange(worksheet, totalRow, totalRow, 1, 8);
-    signatureRow = totalRow + 2;
   }
 
   worksheet.mergeCells(`C${signatureRow}:E${signatureRow}`);
-  setCell(worksheet, `C${signatureRow}`, "ลายเซ็น ............................", { align: "center", fontSize: 16 });
+  setCell(worksheet, `C${signatureRow}`, "ลายเซ็น ............................", { align: "center", fontSize: 12 });
+  worksheet.getRow(signatureRow).height = 24;
+  worksheet.getCell(`C${signatureRow}`).alignment = {
+    horizontal: "center",
+    vertical: "bottom",
+    wrapText: true,
+  };
 
-  worksheet.pageSetup.printArea = `A1:H${signatureRow + 1}`;
+  worksheet.pageSetup.printArea = `A1:H${SIGNATURE_BOTTOM_ROW}`;
+
+  return worksheet.name;
 }
 
 export async function exportToExcel(records: RepairRecord[]): Promise<void> {
@@ -548,13 +705,15 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
   }
 
   const workbook = new ExcelJS.Workbook();
+  workbook.calcProperties.fullCalcOnLoad = true;
   const logoDataUrl = await toBase64DataUrl(hinoLogo);
 
   for (let i = 0; i < records.length; i += 1) {
     const rows = buildExcelRows(records[i]);
-    const pages = toPageChunks(rows, PAGE_ROW_CAPACITY);
+    const pages = toPageChunks(rows, PAGE_ROW_CAPACITY_UNITS);
+    const pageSheetNames: string[] = [];
     for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
-      await buildTemplateSheet(
+      const sheetName = await buildTemplateSheet(
         workbook,
         records[i],
         i,
@@ -563,9 +722,28 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
         pages[pageIndex],
         logoDataUrl
       );
+      pageSheetNames.push(sheetName);
+    }
+
+
+    const lastPageIndex = pages.length - 1;
+    if (lastPageIndex >= 0) {
+      const lastSheet = workbook.getWorksheet(pageSheetNames[lastPageIndex]);
+      if (lastSheet) {
+        const totalRow = SIGNATURE_BOTTOM_ROW - 1;
+        const formulaRefs = pageSheetNames
+          .map((sheetName) => {
+            const sheetRef = sheetNameForFormula(sheetName);
+            return `SUMIFS(${sheetRef}!F${DETAIL_START_ROW}:F${DETAIL_END_ROW},${sheetRef}!A${DETAIL_START_ROW}:A${DETAIL_END_ROW},"<>")`;
+          })
+          .join(",");
+
+        lastSheet.getCell(`F${totalRow}`).value = {
+          formula: formulaRefs ? `SUM(${formulaRefs})` : "0",
+        };
+      }
     }
   }
-
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob(
     [buffer],
