@@ -220,6 +220,21 @@ function sheetNameForRecord(record: RepairRecord, index: number): string {
   return base.slice(0, 31);
 }
 
+function sheetNameForRecordPage(
+  record: RepairRecord,
+  index: number,
+  pageIndex: number,
+  totalPages: number
+): string {
+  const baseName = sheetNameForRecord(record, index);
+  const pageSuffix = totalPages > 1 ? `_P${pageIndex + 1}` : "";
+  return `${baseName}${pageSuffix}`.slice(0, 31);
+}
+
+function sheetNameForFormula(name: string): string {
+  return `'${name.replace(/'/g, "''")}'`;
+}
+
 interface ExcelRowData {
   index: number;
   repairText: string;
@@ -231,13 +246,15 @@ interface ExcelRowData {
   rowHeight: number;
 }
 
-const PAGE_ROW_CAPACITY_UNITS = 18;
-const BASE_TABLE_ROW_HEIGHT = 18;
+const BASE_TABLE_ROW_HEIGHT = 20;
 const TABLE_LINE_HEIGHT = 14;
 const REPAIR_TEXT_CHARS_PER_LINE = 32;
 const PART_TEXT_CHARS_PER_LINE = 32;
 const INFO_SECTION_ROW_HEIGHT = 22;
 const SIGNATURE_BOTTOM_ROW = 33;
+const DETAIL_START_ROW = 14;
+const DETAIL_END_ROW = SIGNATURE_BOTTOM_ROW - 2;
+const PAGE_ROW_CAPACITY_UNITS = DETAIL_END_ROW - DETAIL_START_ROW + 1;
 
 function estimateTextLines(text: string, charsPerLine: number): number {
   if (!text) return 1;
@@ -262,20 +279,58 @@ function estimateRowMetrics(repairText: string, partText: string): { rowUnits: n
 function buildExcelRows(record: RepairRecord): ExcelRowData[] {
   const contentCount = Math.max(record.repairItems.length, record.repairParts.length, 1);
 
-  return Array.from({ length: contentCount }, (_, i) => {
+  const rows = Array.from({ length: contentCount }, (_, i) => {
     const item = record.repairItems[i];
     const part = record.repairParts[i];
     const repairText = item?.description || "";
     const partText = part?.partName || "";
-    const metrics = estimateRowMetrics(repairText, partText);
+    const quantity = part?.quantity ?? "";
+    const unitPrice = part?.unitPrice ?? "";
+    const totalPrice = part?.totalPrice ?? "";
+
+    const hasData =
+      repairText.trim() !== "" ||
+      partText.trim() !== "" ||
+      String(quantity).trim() !== "" ||
+      String(unitPrice).trim() !== "" ||
+      String(totalPrice).trim() !== "";
 
     return {
-      index: i + 1,
       repairText,
       partText,
-      quantity: part?.quantity ?? "",
-      unitPrice: part?.unitPrice ?? "",
-      totalPrice: part?.totalPrice ?? "",
+      quantity,
+      unitPrice,
+      totalPrice,
+      hasData,
+    };
+  }).filter((row) => row.hasData);
+
+  if (rows.length === 0) {
+    const metrics = estimateRowMetrics("", "");
+    return [
+      {
+        index: 1,
+        repairText: "",
+        partText: "",
+        quantity: "",
+        unitPrice: "",
+        totalPrice: "",
+        rowUnits: metrics.rowUnits,
+        rowHeight: metrics.rowHeight,
+      },
+    ];
+  }
+
+  return rows.map((row, index) => {
+    const metrics = estimateRowMetrics(row.repairText, row.partText);
+
+    return {
+      index: index + 1,
+      repairText: row.repairText,
+      partText: row.partText,
+      quantity: row.quantity,
+      unitPrice: row.unitPrice,
+      totalPrice: row.totalPrice,
       rowUnits: metrics.rowUnits,
       rowHeight: metrics.rowHeight,
     };
@@ -286,6 +341,7 @@ function toPageChunks(items: ExcelRowData[], maxUnits: number): ExcelRowData[][]
   const result: ExcelRowData[][] = [];
   let currentPage: ExcelRowData[] = [];
   let currentUnits = 0;
+  let runningIndex = 1;
 
   for (const item of items) {
     const itemUnits = Math.max(1, item.rowUnits);
@@ -297,11 +353,35 @@ function toPageChunks(items: ExcelRowData[], maxUnits: number): ExcelRowData[][]
       currentUnits = 0;
     }
 
-    currentPage.push(item);
+    currentPage.push({
+      ...item,
+      index: runningIndex,
+    });
+    runningIndex += 1;
     currentUnits += itemUnits;
+
+    if (currentUnits >= maxUnits) {
+      result.push(currentPage);
+      currentPage = [];
+      currentUnits = 0;
+    }
   }
 
   if (currentPage.length > 0) {
+    while (currentUnits < maxUnits) {
+      currentPage.push({
+        index: runningIndex,
+        repairText: "",
+        partText: "",
+        quantity: "",
+        unitPrice: "",
+        totalPrice: "",
+        rowUnits: 1,
+        rowHeight: BASE_TABLE_ROW_HEIGHT,
+      });
+      runningIndex += 1;
+      currentUnits += 1;
+    }
     result.push(currentPage);
   }
 
@@ -447,10 +527,8 @@ async function buildTemplateSheet(
   totalPages: number,
   pageRows: ExcelRowData[],
   logoDataUrl: string
-): Promise<void> {
-  const baseName = sheetNameForRecord(record, index);
-  const pageSuffix = totalPages > 1 ? `_P${pageIndex + 1}` : "";
-  const worksheet = workbook.addWorksheet(`${baseName}${pageSuffix}`.slice(0, 31));
+): Promise<string> {
+  const worksheet = workbook.addWorksheet(sheetNameForRecordPage(record, index, pageIndex, totalPages));
 
   worksheet.pageSetup = {
     paperSize: 9,
@@ -538,7 +616,7 @@ async function buildTemplateSheet(
   applyBorderRange(worksheet, 6, 11, 1, 6);
 
   const tableHeaderRow = 13;
-  const tableStartRow = 14;
+  const tableStartRow = DETAIL_START_ROW;
   const grandTotal = record.repairParts.reduce((sum, part) => sum + Number(part.totalPrice || 0), 0);
 
 
@@ -557,15 +635,21 @@ async function buildTemplateSheet(
 
   for (let i = 0; i < pageRows.length; i += 1) {
     const row = tableStartRow + i;
+    if (row > DETAIL_END_ROW) {
+      break;
+    }
     const rowData = pageRows[i];
     worksheet.getRow(row).height = rowData.rowHeight;
 
-    worksheet.getCell(row, 1).value = rowData.index;
+    worksheet.getCell(row, 1).value = rowData.index > 0 ? rowData.index : "";
     worksheet.getCell(row, 2).value = rowData.repairText;
     worksheet.getCell(row, 3).value = rowData.partText;
     worksheet.getCell(row, 4).value = rowData.quantity;
     worksheet.getCell(row, 5).value = rowData.unitPrice;
-    worksheet.getCell(row, 6).value = rowData.totalPrice;
+    worksheet.getCell(row, 6).value = {
+      formula: `IF(AND(D${row}<>"",E${row}<>""),D${row}*E${row},"")`,
+      result: rowData.totalPrice ? Number(rowData.totalPrice) : undefined,
+    };
     worksheet.getCell(row, 7).value = "";
     worksheet.mergeCells(`G${row}:H${row}`);
 
@@ -584,16 +668,18 @@ async function buildTemplateSheet(
   const signatureRow = SIGNATURE_BOTTOM_ROW;
 
   if (pageIndex === totalPages - 1) {
-    const totalRow = Math.min(tableStartRow + pageRows.length, signatureRow - 1);
+    const totalRow = signatureRow - 1;
+    const lastDataRow = DETAIL_END_ROW;
     worksheet.mergeCells(`A${totalRow}:E${totalRow}`);
     worksheet.mergeCells(`F${totalRow}:H${totalRow}`);
 
     setCell(worksheet, `A${totalRow}`, "รวมราคา", { bold: true, align: "center", fontSize: 10 });
-    setCell(worksheet, `F${totalRow}`, grandTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 }), {
-      bold: true,
-      align: "right",
-      fontSize: 10,
-    });
+    worksheet.getCell(`F${totalRow}`).value = {
+      formula: `SUMIFS(F${tableStartRow}:F${lastDataRow},A${tableStartRow}:A${lastDataRow},"<>")`,
+      result: grandTotal,
+    };
+    worksheet.getCell(`F${totalRow}`).font = { name: "Arial", size: 10, bold: true };
+    worksheet.getCell(`F${totalRow}`).alignment = { horizontal: "right", vertical: "middle" };
 
     applyBorderRange(worksheet, totalRow, totalRow, 1, 8);
   }
@@ -608,6 +694,8 @@ async function buildTemplateSheet(
   };
 
   worksheet.pageSetup.printArea = `A1:H${SIGNATURE_BOTTOM_ROW}`;
+
+  return worksheet.name;
 }
 
 export async function exportToExcel(records: RepairRecord[]): Promise<void> {
@@ -617,13 +705,15 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
   }
 
   const workbook = new ExcelJS.Workbook();
+  workbook.calcProperties.fullCalcOnLoad = true;
   const logoDataUrl = await toBase64DataUrl(hinoLogo);
 
   for (let i = 0; i < records.length; i += 1) {
     const rows = buildExcelRows(records[i]);
     const pages = toPageChunks(rows, PAGE_ROW_CAPACITY_UNITS);
+    const pageSheetNames: string[] = [];
     for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
-      await buildTemplateSheet(
+      const sheetName = await buildTemplateSheet(
         workbook,
         records[i],
         i,
@@ -632,9 +722,28 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
         pages[pageIndex],
         logoDataUrl
       );
+      pageSheetNames.push(sheetName);
+    }
+
+
+    const lastPageIndex = pages.length - 1;
+    if (lastPageIndex >= 0) {
+      const lastSheet = workbook.getWorksheet(pageSheetNames[lastPageIndex]);
+      if (lastSheet) {
+        const totalRow = SIGNATURE_BOTTOM_ROW - 1;
+        const formulaRefs = pageSheetNames
+          .map((sheetName) => {
+            const sheetRef = sheetNameForFormula(sheetName);
+            return `SUMIFS(${sheetRef}!F${DETAIL_START_ROW}:F${DETAIL_END_ROW},${sheetRef}!A${DETAIL_START_ROW}:A${DETAIL_END_ROW},"<>")`;
+          })
+          .join(",");
+
+        lastSheet.getCell(`F${totalRow}`).value = {
+          formula: formulaRefs ? `SUM(${formulaRefs})` : "0",
+        };
+      }
     }
   }
-
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob(
     [buffer],
