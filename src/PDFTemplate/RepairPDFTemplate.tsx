@@ -94,7 +94,6 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
             <div className="pdf-company">
               <p className="pdf-company-name">บริษัท ประธานพรเซอร์วิซ จำกัด</p>
               <p>124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110</p>
-              <p>เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477</p>
               <h1>ใบแจ้งซ่อม</h1>
             </div>
 
@@ -108,7 +107,7 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
                   <span className="label">ชื่อ บริษัท/ลูกค้า</span>
                   <span className="value">{form.client || "-"}</span>
                 </div>
-                <div className="pdf-pair">
+                <div className="pdf-pair wide">
                   <span className="label">เบอร์โทร</span>
                   <span className="value">{form.phone || "-"}</span>
                 </div>
@@ -122,19 +121,19 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
               </div>
 
               <div className="pdf-row">
-                <div className="pdf-pair">
+                <div className="pdf-pair vehicle-brand-pair">
                   <span className="label">ยี่ห้อรถ</span>
                   <span className="value">{form.brand || "-"}</span>
                 </div>
-                <div className="pdf-pair">  
+                <div className="pdf-pair vehicle-model-pair">  
                   <span className="label">รุ่นรถ</span>
                   <span className="value">{form.vehicleModel || "-"}</span>
                 </div>
-                <div className="pdf-pair">
+                <div className="pdf-pair vehicle-number-pair">
                   <span className="label">เบอร์รถ</span>
                   <span className="value">{form.vehicleNumber || "-"}</span>
                 </div>
-                <div className="pdf-pair">
+                <div className="pdf-pair vehicle-plate-pair">
                   <span className="label">ทะเบียนรถ</span>
                   <span className="value">{form.licensePlate || "-"}</span>
                 </div>

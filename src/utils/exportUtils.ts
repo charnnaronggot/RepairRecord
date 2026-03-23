@@ -251,7 +251,7 @@ const TABLE_LINE_HEIGHT = 14;
 const REPAIR_TEXT_CHARS_PER_LINE = 32;
 const PART_TEXT_CHARS_PER_LINE = 32;
 const INFO_SECTION_ROW_HEIGHT = 22;
-const SIGNATURE_BOTTOM_ROW = 33;
+const SIGNATURE_BOTTOM_ROW = 36;
 const DETAIL_START_ROW = 14;
 const DETAIL_END_ROW = SIGNATURE_BOTTOM_ROW - 2;
 const PAGE_ROW_CAPACITY_UNITS = DETAIL_END_ROW - DETAIL_START_ROW + 1;
@@ -561,8 +561,7 @@ async function buildTemplateSheet(
   worksheet.mergeCells("A1:B4");
   worksheet.mergeCells("C1:F1");
   worksheet.mergeCells("C2:F2");
-  worksheet.mergeCells("C3:F3");
-  worksheet.mergeCells("C4:F4");
+  worksheet.mergeCells("C3:F4");
 
   worksheet.getRow(1).height = 28;
   worksheet.getRow(2).height = 20;
@@ -570,11 +569,11 @@ async function buildTemplateSheet(
   worksheet.getRow(4).height = 30;
 
   await addContainedImageToRange(workbook, worksheet, logoDataUrl, "jpeg", 1, 1, 2, 4);
-
+  
   setCell(worksheet, "C1", "บริษัท ประธานพรเซอร์วิซ จำกัด", { bold: true, fontSize: 16, align: "center" });
   setCell(worksheet, "C2", "124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110", { fontSize: 10, align: "center" });
-  setCell(worksheet, "C3", "เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477", { fontSize: 10, align: "center" });
-  setCell(worksheet, "C4", "ใบแจ้งซ่อม", { bold: true, fontSize: 16 , align: "center" });
+  // setCell(worksheet, "C3", "เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477", { fontSize: 10, align: "center" });
+  setCell(worksheet, "C3", "ใบแจ้งซ่อม", { bold: true, fontSize: 20 , align: "center" });
 
   worksheet.mergeCells("G6:H11");
 
@@ -626,7 +625,7 @@ async function buildTemplateSheet(
   headers.forEach((header, i) => {
     const cell = worksheet.getCell(tableHeaderRow, i + 1);
     cell.value = header; 
-    cell.font = { name: "Arial", size: 11, bold: true };
+    cell.font = { name: "Arial", size: 10, bold: true };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = BORDER_THIN;
   });
