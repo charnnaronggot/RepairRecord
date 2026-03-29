@@ -1,6 +1,6 @@
 import type { RepairPart } from "../types/RepairRecord";
 import { emptyRepairPart } from "../types/RepairRecord";
-import AutocompleteInput from "./AutocompleteInput";
+// import AutocompleteInput from "./AutocompleteInput";
 
 interface RepairPartsTableProps {
   parts: RepairPart[];
