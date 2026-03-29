@@ -7,6 +7,8 @@ interface RepairPartsTableProps {
 }
 
 export default function RepairPartsTable({ parts, onChange }: RepairPartsTableProps) {
+  const roundTo2 = (value: number): number => Math.round(value * 100) / 100;
+
   const addRow = () => {
     onChange([
       ...parts,
@@ -22,9 +24,10 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
     onChange(
       parts.map((part) => {
         if (part.id !== id) return part;
-        const updated = { ...part, [field]: value };
+        const normalizedValue = field === "unitPrice" ? roundTo2(Number(value) || 0) : value;
+        const updated = { ...part, [field]: normalizedValue };
         if (field === "quantity" || field === "unitPrice") {
-          updated.totalPrice = Number(updated.quantity) * Number(updated.unitPrice);
+          updated.totalPrice = roundTo2(Number(updated.quantity) * Number(updated.unitPrice));
         }
         return updated;
       })
@@ -101,6 +104,7 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
                 <td className="right">
                   {part.totalPrice.toLocaleString("th-TH", {
                     minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
                   })}
                 </td>
                 <td className="center">
@@ -123,6 +127,7 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
                   <strong>
                     {grandTotal.toLocaleString("th-TH", {
                       minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
                     })}
                   </strong>
                 </td>

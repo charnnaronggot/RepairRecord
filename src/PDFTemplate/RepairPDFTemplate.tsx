@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import type { RepairRecord } from "../types/RepairRecord";
 import "./RepairPDFTempalte.css";
 import hinoLogo from "../assets/images/hino_logo.jpg";
+import { formatThaiDateTime } from "../utils/dateTime";
 
 interface RepairPDFTemplateProps {
   form: RepairRecord;
@@ -71,8 +72,20 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
       description: item?.description ?? "",
       partName: part?.partName ?? "",
       quantity: part?.quantity != null ? String(part.quantity) : "",
-      unitPrice: part?.unitPrice != null ? part.unitPrice.toLocaleString("th-TH") : "",
-      totalPrice: part?.totalPrice != null ? part.totalPrice.toLocaleString("th-TH") : "",
+      unitPrice:
+        part?.unitPrice != null
+          ? part.unitPrice.toLocaleString("th-TH", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          : "",
+      totalPrice:
+        part?.totalPrice != null
+          ? part.totalPrice.toLocaleString("th-TH", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          : "",
     };
   });
 
@@ -161,7 +174,7 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
             </div>
             <div className="pdf-pair">
               <span className="label">วันที่ใบแจ้งซ่อม</span>
-              <span className="value">{form.repairReportDate || "-"}</span>
+              <span className="value">{formatThaiDateTime(form.repairReportDate)}</span>
             </div>
           </div>
             </div>
@@ -207,7 +220,10 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
                     รวมราคา
                   </td>
                   <td colSpan={2} style={{ textAlign: "right", fontWeight: 700 }}>
-                    {grandTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 })}
+                    {grandTotal.toLocaleString("th-TH", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </td>
                 </tr>
               </tfoot>

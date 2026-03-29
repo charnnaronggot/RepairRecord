@@ -1,3 +1,5 @@
+import { getNowDateTimeLocalValue } from "../utils/dateTime";
+
 export interface RepairItem {
   id: string;
   description: string;
@@ -44,7 +46,7 @@ export const emptyRepairRecord: RepairRecord = {
   client: "",
   phone: "",
   driver: "",
-  repairReportDate: new Date().toISOString().split("T")[0],
+  repairReportDate: getNowDateTimeLocalValue(),
   brand: "",
   vehicleModel: "",
   vehicleNumber: "",

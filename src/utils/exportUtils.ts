@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import hinoLogo from "../assets/images/hino_logo.jpg";
+import { formatThaiDateTime } from "./dateTime";
 
 const BORDER_THIN: Partial<ExcelJS.Borders> = {
   top: { style: "thin" },
@@ -10,13 +11,6 @@ const BORDER_THIN: Partial<ExcelJS.Borders> = {
   bottom: { style: "thin" },
   right: { style: "thin" },
 };
-
-function formatThaiDateOnly(value: string | undefined): string {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("th-TH");
-}
 
 /**
  * Export records to CSV format
@@ -66,7 +60,7 @@ export function exportToCSV(records: RepairRecord[]): void {
     record.status,
     record.repairItems.length,
     record.repairParts.length,
-    formatThaiDateOnly(record.repairReportDate),
+    formatThaiDateTime(record.repairReportDate),
   ]);
 
   // Escape CSV values
@@ -125,7 +119,7 @@ export function exportListToPDF(records: RepairRecord[]): void {
       `${record.brand || ""} ${record.vehicleModel || ""}`.trim() || "-",
       record.licensePlate || "-",
       record.status === "completed" ? "completed" : "pending",
-      formatThaiDateOnly(record.repairReportDate),
+      formatThaiDateTime(record.repairReportDate),
     ]),
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [44, 62, 80], textColor: 255 },
@@ -610,7 +604,7 @@ async function buildTemplateSheet(
   setLabelValueCell(worksheet, "A10", "เลขเครื่อง", record.serialNumber || "-");
   setLabelValueCell(worksheet, "D10", "เลขไมล์", record.mileNumber || "-");
   setLabelValueCell(worksheet, "A11", "เลข Job", record.jobNumber || "-");
-  setLabelValueCell(worksheet, "D11", "วันที่ใบแจ้งซ่อม", record.repairReportDate || "-");
+  setLabelValueCell(worksheet, "D11", "วันที่ใบแจ้งซ่อม", formatThaiDateTime(record.repairReportDate));
 
   applyBorderRange(worksheet, 6, 11, 1, 6);
 
@@ -645,10 +639,12 @@ async function buildTemplateSheet(
     worksheet.getCell(row, 3).value = rowData.partText;
     worksheet.getCell(row, 4).value = rowData.quantity;
     worksheet.getCell(row, 5).value = rowData.unitPrice;
+    worksheet.getCell(row, 5).numFmt = "#,##0.00";
     worksheet.getCell(row, 6).value = {
       formula: `IF(AND(D${row}<>"",E${row}<>""),D${row}*E${row},"")`,
       result: rowData.totalPrice ? Number(rowData.totalPrice) : undefined,
     };
+    worksheet.getCell(row, 6).numFmt = "#,##0.00";
     worksheet.getCell(row, 7).value = "";
     worksheet.mergeCells(`G${row}:H${row}`);
 
@@ -677,6 +673,7 @@ async function buildTemplateSheet(
       formula: `SUMIFS(F${tableStartRow}:F${lastDataRow},A${tableStartRow}:A${lastDataRow},"<>")`,
       result: grandTotal,
     };
+    worksheet.getCell(`F${totalRow}`).numFmt = "#,##0.00";
     worksheet.getCell(`F${totalRow}`).font = { name: "Arial", size: 10, bold: true };
     worksheet.getCell(`F${totalRow}`).alignment = { horizontal: "right", vertical: "middle" };
 

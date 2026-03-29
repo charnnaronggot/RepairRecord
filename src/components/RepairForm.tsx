@@ -10,6 +10,7 @@ import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
 import { clientsList, brandsList } from "../config/clientsAndBrands";
 import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
 import { exportToExcel } from "../utils/exportUtils";
+import { getNowDateTimeLocalValue, toDateTimeLocalValue } from "../utils/dateTime";
 interface RepairFormProps {
   initialRecord?: RepairRecord;
   onSave?: () => void;
@@ -17,7 +18,13 @@ interface RepairFormProps {
 }
 
 export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFormProps) {
-  const [form, setForm] = useState<RepairRecord>(initialRecord || { ...emptyRepairRecord });
+  const [form, setForm] = useState<RepairRecord>(() => {
+    const baseForm = initialRecord ? { ...initialRecord } : { ...emptyRepairRecord };
+    return {
+      ...baseForm,
+      repairReportDate: toDateTimeLocalValue(baseForm.repairReportDate),
+    };
+  });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const isEdit = !!initialRecord?.id;
@@ -49,7 +56,10 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
       } else {
         const id = await addRepairRecord(form);
         setMessage(`บันทึกสำเร็จ! (ID: ${id})`);
-        setForm({ ...emptyRepairRecord });
+        setForm({
+          ...emptyRepairRecord,
+          repairReportDate: getNowDateTimeLocalValue(),
+        });
       }
       onSave?.();
     } catch (err) {
@@ -77,7 +87,7 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
     { key: "client", label: "ลูกค้า (Client)", placeholder: "ชื่อลูกค้า / บริษัท" },
     { key: "phone", label: "เบอร์โทร (Phone)", placeholder: "0XX-XXX-XXXX", type: "tel" },
     { key: "driver", label: "พนักงานขับรถ", placeholder: "พนักงานขับรถ" },
-    { key: "repairReportDate", label: "วันที่รายงาน (Date)", type: "date" },
+    { key: "repairReportDate", label: "วันที่รายงาน (Date & Time)", type: "datetime-local" },
     { key: "brand", label: "ยี่ห้อ (Brand)", placeholder: "e.g. Isuzu" },
     { key: "vehicleModel", label: "รุ่นรถ (Model)", placeholder: "e.g.GXZ360 " },
     { key: "vehicleNumber", label: "หมายเลขรถ (Vehicle No.)", placeholder: "Vehicle Number" },

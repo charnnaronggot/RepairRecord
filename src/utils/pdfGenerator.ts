@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { RepairRecord } from "../types/RepairRecord";
 import autoTable from "jspdf-autotable";
+import { formatThaiDateTime } from "./dateTime";
 
 const DEFAULT_EXPORT_FONT = "Arial";
 
@@ -40,7 +41,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     ["Client", record.client],
     ["Phone", record.phone],
     ["Driver", record.driver],
-    ["Date", record.repairReportDate],
+    ["Date", formatThaiDateTime(record.repairReportDate)],
     ["Brand", record.brand],
     ["Model", record.vehicleModel],
   ];
@@ -203,7 +204,7 @@ export function generateDummyPDF(): void {
     client: "บริษัท ทดสอบ จำกัด",
     phone: "081-234-5678",
     driver: "นายสมชาย พนักงานขับรถ",
-    repairReportDate: "2026-03-07",
+    repairReportDate: "2026-03-07T10:30",
     brand: "Toyota",
     vehicleModel: "Hilux Revo",
     vehicleNumber: "VH-12345",

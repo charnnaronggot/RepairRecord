@@ -5,6 +5,7 @@ import { getRepairRecords, updateRepairRecord, deleteRepairRecord } from "../ser
 import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
 import { exportToExcel } from "../utils/exportUtils";
 import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
+import { formatThaiDateTime } from "../utils/dateTime";
 
 interface RecordsListProps {
   onEdit: (record: RepairRecord) => void;
@@ -194,13 +195,7 @@ const filteredRecords = records.filter((record) => {
                     </span>
                   </td>
                   <td className="small">
-                    {record.repairReportDate
-                      ? new Date(record.repairReportDate).toLocaleDateString("th-TH", {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                      })
-                      : "-"}
+                    {formatThaiDateTime(record.repairReportDate)}
                   </td>
                   <td className="actions-cell">
                     <button

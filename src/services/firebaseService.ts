@@ -13,11 +13,55 @@ import type { RepairRecord } from "../types/RepairRecord";
 
 const COLLECTION_NAME = "RepairRecord";
 
+const roundTo2 = (value: number): number => Math.round(value * 100) / 100;
+
+function normalizeRepairPartsForSave(record: RepairRecord): RepairRecord {
+  return {
+    ...record,
+    repairParts: (record.repairParts || []).map((part) => {
+      const quantity = Number(part.quantity || 0);
+      const unitPrice = roundTo2(Number(part.unitPrice || 0));
+      const computedTotal = roundTo2(quantity * unitPrice);
+
+      return {
+        ...part,
+        quantity,
+        unitPrice,
+        totalPrice: computedTotal,
+      };
+    }),
+  };
+}
+
+function normalizePartialRepairRecordForSave(record: Partial<RepairRecord>): Partial<RepairRecord> {
+  if (!record.repairParts) {
+    return record;
+  }
+
+  return {
+    ...record,
+    repairParts: record.repairParts.map((part) => {
+      const quantity = Number(part.quantity || 0);
+      const unitPrice = roundTo2(Number(part.unitPrice || 0));
+      const computedTotal = roundTo2(quantity * unitPrice);
+
+      return {
+        ...part,
+        quantity,
+        unitPrice,
+        totalPrice: computedTotal,
+      };
+    }),
+  };
+}
+
 export async function addRepairRecord(record: RepairRecord): Promise<string> {
+  const normalizedRecord = normalizeRepairPartsForSave(record);
+
   // เก็บรูปเป็น base64 ตรงใน Firestore ไม่ต้องอัปโหลด Storage
   const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-    ...record,
-    status: record.status || "pending",
+    ...normalizedRecord,
+    status: normalizedRecord.status || "pending",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -45,8 +89,10 @@ export async function updateRepairRecord(
     throw notFoundError;
   }
 
+  const normalizedRecord = normalizePartialRepairRecordForSave(record);
+
   await updateDoc(docRef, {
-    ...record,
+    ...normalizedRecord,
     updatedAt: serverTimestamp(),
   });
 }
