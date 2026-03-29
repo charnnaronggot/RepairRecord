@@ -257,11 +257,11 @@
 }
 
 .repair-pdf-a4 .pdf-main-table .col-repair {
-	width: 45mm;
+	width: 38mm;
 }
 
 .repair-pdf-a4 .pdf-main-table .col-parts {
-	width: 45mm;
+	width: 38mm;
 }
 
 .repair-pdf-a4 .pdf-main-table .col-qty {
@@ -269,18 +269,23 @@
 	text-align: center;
 }
 
+.repair-pdf-a4 .pdf-main-table .col-unit {
+	width: 14mm;
+	text-align: center;
+}
+
 .repair-pdf-a4 .pdf-main-table .col-unit-price {
-	width: 23mm;
+	width: 21mm;
 	text-align: center;
 }
 
 .repair-pdf-a4 .pdf-main-table .col-total {
-	width: 23mm;
+	width: 21mm;
 	text-align: center;
 }
 
 .repair-pdf-a4 .pdf-main-table .col-remark {
-	width: 27mm;
+	width: 31mm;
 }
 
 .repair-pdf-a4 .pdf-signature {

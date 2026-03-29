@@ -2,8 +2,9 @@ import { useState , useRef } from "react";
 import Camera from "./Camera";
 import RepairItemsTable from "./RepairItemsTable";
 import RepairPartsTable from "./RepairPartsTable";
+import RemarkTable from "./RemarkTable";
 import AutocompleteInput from "./AutocompleteInput";
-import type { RepairRecord, RepairItem, RepairPart } from "../types/RepairRecord";
+import type { RepairRecord, RepairItem, RepairPart, RemarkItem } from "../types/RepairRecord";
 import { emptyRepairRecord } from "../types/RepairRecord";
 import { addRepairRecord, updateRepairRecord } from "../services/firebaseService";
 import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
@@ -20,9 +21,17 @@ interface RepairFormProps {
 export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFormProps) {
   const [form, setForm] = useState<RepairRecord>(() => {
     const baseForm = initialRecord ? { ...initialRecord } : { ...emptyRepairRecord };
+    const normalizedRemarks =
+      baseForm.remarks && baseForm.remarks.length > 0
+        ? baseForm.remarks
+        : baseForm.remark
+          ? [{ id: crypto.randomUUID(), description: baseForm.remark }]
+          : [];
+
     return {
       ...baseForm,
       repairReportDate: toDateTimeLocalValue(baseForm.repairReportDate),
+      remarks: normalizedRemarks,
     };
   });
   const [saving, setSaving] = useState(false);
@@ -39,6 +48,10 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
 
   const handlePartsChange = (parts: RepairPart[]) => {
     setForm((prev) => ({ ...prev, repairParts: parts }));
+  };
+
+  const handleRemarkChange = (remarks: RemarkItem[]) => {
+    setForm((prev) => ({ ...prev, remarks, remark: remarks.map((item) => item.description).join("\n") }));
   };
 
   const handlePhotoCapture = (imageData: string) => {
@@ -157,6 +170,10 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
         {/* ─── Repair Parts Table ─── */}
         <section className="form-section">
           <RepairPartsTable parts={form.repairParts} onChange={handlePartsChange} />
+        </section>
+
+        <section className="form-section">
+          <RemarkTable items={form.remarks ?? []} onChange={handleRemarkChange} />
         </section>
 
         {/* ─── Actions ─── */}

@@ -18,6 +18,12 @@ const PDF_FONT_SIZE = {
 export function generateRepairPDF(record: RepairRecord): void {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
+  const normalizedRemarks =
+    record.remarks && record.remarks.length > 0
+      ? record.remarks
+      : record.remark
+        ? [{ id: "legacy-remark", description: record.remark }]
+        : [];
 
   // ─── Header ───
   doc.setFontSize(PDF_FONT_SIZE.title);
@@ -101,13 +107,10 @@ export function generateRepairPDF(record: RepairRecord): void {
 
   autoTable(doc, {
     startY: infoEndY + 12,
-    head: [["#", "Description", "Qty", "Unit", "Unit Price", "Total"]],
+    head: [["#", "Description"]],
     body: itemTableBody,
     foot: [
       [
-        "",
-        "",
-        "",
         "",
         "Subtotal",
         // itemsTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
@@ -119,10 +122,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     styles: { fontSize: PDF_FONT_SIZE.table, cellPadding: 3 },
     columnStyles: {
       0: { halign: "center", cellWidth: 12 },
-      2: { halign: "center", cellWidth: 18 },
-      3: { halign: "center", cellWidth: 20 },
-      4: { halign: "right", cellWidth: 28 },
-      5: { halign: "right", cellWidth: 28 },
+      1: { cellWidth: 176 },
     },
     margin: { left: 15, right: 15 },
   });
@@ -137,7 +137,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     (idx + 1).toString(),
     part.partName,
     part.quantity.toString(),
-    // part.unit,
+    part.unit || "-",
     part.unitPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
     part.totalPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
   ]);
@@ -172,6 +172,30 @@ export function generateRepairPDF(record: RepairRecord): void {
     },
     margin: { left: 15, right: 15 },
   });
+
+  if (normalizedRemarks.length > 0) {
+    const remarksTableStartY = (doc as any).lastAutoTable.finalY + 8;
+    doc.setFontSize(PDF_FONT_SIZE.sectionTitle);
+    doc.setFont(DEFAULT_EXPORT_FONT, "bold");
+    doc.text("Remarks (หมายเหตุ)", 18, remarksTableStartY);
+
+    autoTable(doc, {
+      startY: remarksTableStartY + 4,
+      head: [["#", "Remark"]],
+      body: normalizedRemarks.map((remark, idx) => [
+        (idx + 1).toString(),
+        remark.description || "-",
+      ]),
+      theme: "grid",
+      headStyles: { fillColor: [84, 110, 122], textColor: 255, fontStyle: "bold" },
+      styles: { fontSize: PDF_FONT_SIZE.table, cellPadding: 3 },
+      columnStyles: {
+        0: { halign: "center", cellWidth: 12 },
+        1: { cellWidth: 168 },
+      },
+      margin: { left: 15, right: 15 },
+    });
+  }
 
   // ─── Footer ───
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -220,7 +244,6 @@ export function generateDummyPDF(): void {
         id: "1",
         description: "เปลี่ยนน้ำมันเครื่อง",
         // quantity: 1,
-        // unit: "ครั้ง",
         // unitPrice: 2500,
         // totalPrice: 2500,
       },
@@ -228,7 +251,6 @@ export function generateDummyPDF(): void {
         id: "2",
         description: "ผ้าเบรกหน้า",
         // quantity: 2,
-        // unit: "ชุด",
         // unitPrice: 1800,
         // totalPrice: 3600,
       },
@@ -236,7 +258,6 @@ export function generateDummyPDF(): void {
         id: "3",
         description: "กรองอากาศ",
         // quantity: 1,
-        // unit: "ชิ้น",
         // unitPrice: 450,
         // totalPrice: 450,
       },
@@ -244,7 +265,6 @@ export function generateDummyPDF(): void {
         id: "4",
         description: "ค่าแรงช่าง",
         // quantity: 3,
-        // unit: "ชั่วโมง",
         // unitPrice: 800,
         // totalPrice: 2400,
       },
@@ -254,7 +274,7 @@ export function generateDummyPDF(): void {
         id: "p1",
         partName: "Oil Filter",
         quantity: 1,
-        // unit: "ชิ้น",
+        unit: "ชิ้น",
         unitPrice: 350,
         totalPrice: 350,
       },
@@ -262,7 +282,7 @@ export function generateDummyPDF(): void {
         id: "p2",
         partName: "Brake Pads (Front)",
         quantity: 1,
-        // unit: "ชุด",
+        unit: "ชุด",
         unitPrice: 2200,
         totalPrice: 2200,
       },
@@ -270,7 +290,7 @@ export function generateDummyPDF(): void {
         id: "p3",
         partName: "Air Filter",
         quantity: 1,
-        // unit: "ชิ้น",
+        unit: "ชิ้น",
         unitPrice: 450,
         totalPrice: 450,
       },
@@ -278,11 +298,22 @@ export function generateDummyPDF(): void {
         id: "p4",
         partName: "Coolant",
         quantity: 2,
-        // unit: "ลิตร",
+        unit: "ลิตร",
         unitPrice: 400,
         totalPrice: 800,
       },
     ],
+    remarks: [
+      {
+        id: "r1",
+        description: "ลูกค้าแจ้งให้ตรวจสอบเสียงดังบริเวณล้อหน้า",
+      },
+      {
+        id: "r2",
+        description: "แนะนำให้กลับมาตรวจเช็กซ้ำหลังใช้งาน 1 สัปดาห์",
+      },
+    ],
+    remark: "ลูกค้าแจ้งให้ตรวจสอบเสียงดังบริเวณล้อหน้า\nแนะนำให้กลับมาตรวจเช็กซ้ำหลังใช้งาน 1 สัปดาห์",
   };
 
   generateRepairPDF(dummyRecord);
