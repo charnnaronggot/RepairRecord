@@ -121,7 +121,7 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
             <div className="pdf-company">
               <p className="pdf-company-name">บริษัท ประธานพรเซอร์วิซ จำกัด</p>
               <p>124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110</p>
-              <h1>ใบแจ้งซ่อม</h1>
+              <h1 className="pdf-title">ใบแจ้งซ่อม</h1>
             </div>
 
             <div className="pdf-logo pdf-logo-right" aria-hidden="true" />

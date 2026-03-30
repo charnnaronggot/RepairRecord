@@ -16,6 +16,8 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [message, setMessage] = useState("");
   const [pdfRecords, setPdfRecords] = useState<RepairRecord[]>([]);
   const [isPreparingPdf, setIsPreparingPdf] = useState(false);
@@ -80,14 +82,26 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
   };
 
   // Filter records
-const filteredRecords = records.filter((record) => {
-  const matchesSearch = (
-    String(record.jobNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(record.client || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(record.licensePlate || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+const filteredRecords = records
+  .filter((record) => {
+    const matchesSearch = (
+      String(record.jobNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(record.client || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(record.licensePlate || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
     const matchesStatus = statusFilter === "all" || record.status === statusFilter;
-    return matchesSearch && matchesStatus;
+
+    const recordDate = record.repairReportDate ? record.repairReportDate.slice(0, 10) : "";
+    const matchesFrom = dateFrom === "" || recordDate >= dateFrom;
+    const matchesTo = dateTo === "" || recordDate <= dateTo;
+
+    return matchesSearch && matchesStatus && matchesFrom && matchesTo;
+  })
+  .sort((a, b) => {
+    const numA = Number(a.jobNumber);
+    const numB = Number(b.jobNumber);
+    if (!isNaN(numA) && !isNaN(numB)) return numB - numA;
+    return String(b.jobNumber || "").localeCompare(String(a.jobNumber || ""));
   });
 
   useEffect(() => {
@@ -140,6 +154,30 @@ const filteredRecords = records.filter((record) => {
             <option value="pending">รอดำเนินการ</option>
             <option value="completed">เสร็จแล้ว</option>
           </select>
+
+          <label className="date-range-label">
+            ตั้งแต่
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="filter-date"
+            />
+          </label>
+          <label className="date-range-label">
+            ถึง
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="filter-date"
+            />
+          </label>
+          {(dateFrom || dateTo) && (
+            <button className="btn btn-secondary" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+              ✕ ล้างวันที่
+            </button>
+          )}
 
           <button className="btn btn-primary" onClick={loadRecords}>
             🔄 รีโหลด

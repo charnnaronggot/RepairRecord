@@ -7,7 +7,7 @@ interface RepairPartsTableProps {
   onChange: (parts: RepairPart[]) => void;
 }
 
-const COMMON_PART_UNITS = ["ชิ้น", "คู่", "งาน", "ครั้ง", "ชุด", "เส้น", "ลูก", "ตัว", "ลิตร"];
+const COMMON_PART_UNITS = ["ชิ้น", "คู่", "งาน", "ครั้ง", "ชุด", "เส้น", "ลูก", "ตัว", "ลิตร" ,"kg" , "ข้าง" ,"ดวง" , "แผ่น" , "เพลา" ,"เที่ยว"];
 
 export default function RepairPartsTable({ parts, onChange }: RepairPartsTableProps) {
   const roundTo2 = (value: number): number => Math.round(value * 100) / 100;
