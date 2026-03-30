@@ -30,7 +30,7 @@ export default function RemarkTable({ items, onChange }: RemarkTableProps) {
   return (
     <div className="repair-items-section">
       <div className="section-header">
-        <h3>Remark</h3>
+        <h3>หมายเหตุ</h3>
         <button type="button" className="btn btn-add" onClick={addRow}>
           + เพิ่มหมายเหตุ
         </button>
