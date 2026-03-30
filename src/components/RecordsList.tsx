@@ -84,7 +84,7 @@ const filteredRecords = records.filter((record) => {
   const matchesSearch = (
     String(record.jobNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     String(record.client || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(record.vehicleNumber || "").toLowerCase().includes(searchTerm.toLowerCase())
+    String(record.licensePlate || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
     const matchesStatus = statusFilter === "all" || record.status === statusFilter;
     return matchesSearch && matchesStatus;
