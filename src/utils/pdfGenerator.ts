@@ -319,7 +319,37 @@ export function generateDummyPDF(): void {
   generateRepairPDF(dummyRecord);
 }
 
-export function generateRepairPDFFromHTML(htmlElement: HTMLElement): void {
+export function generateRepairPDFFromHTML(htmlElement: HTMLElement , records: RepairRecord[]): void {
+    const dates = records
+    .map(r => new Date(r.repairReportDate))
+    .filter(d => !isNaN(d.getTime())); // กันค่าวันที่ผิด
+
+  if (dates.length === 0) {
+    alert("ไม่พบวันที่ที่ถูกต้อง");
+    return;
+  }
+
+  const minDateObj = new Date(Math.min(...dates.map(d => d.getTime())));
+  const maxDateObj = new Date(Math.max(...dates.map(d => d.getTime())));
+
+
+  const toBuddhistDate = (date: Date): string => {
+    const yearBE = date.getFullYear() + 543;
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${day}${month}${yearBE}`;
+  };
+
+  const minDate = toBuddhistDate(minDateObj);
+  const maxDate = toBuddhistDate(maxDateObj);
+
+  var fileName = "";
+  if(records.length === 1 && records[0].jobNumber) {
+    fileName = `${records[0].jobNumber}-${records[0].licensePlate}-${records[0].repairParts[0].partName}.pdf`;
+  } else {
+    fileName = `${minDate.replace(/-/g, "")}-${maxDate.replace(/-/g, "")}.pdf`;
+
+  }
   const render = async () => {
     const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -374,7 +404,7 @@ export function generateRepairPDFFromHTML(htmlElement: HTMLElement): void {
       doc.addImage(imgData, "PNG", x, y, renderWidth, renderHeight, undefined, "FAST");
     }
 
-    doc.save(`repair_report_${Date.now()}.pdf`);
+    doc.save(`${fileName}`);
   };
 
   void render();

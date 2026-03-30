@@ -92,7 +92,7 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
 
   const handleGeneratePDF = () => {
     if (!pdfTemplateRef.current) return;
-    generateRepairPDFFromHTML(pdfTemplateRef.current);
+    generateRepairPDFFromHTML(pdfTemplateRef.current , [form]);
   };
 
   const fields: { key: keyof RepairRecord; label: string; type?: string; placeholder?: string }[] = [

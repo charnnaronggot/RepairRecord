@@ -726,8 +726,38 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
   if (records.length === 0) {
     alert("ไม่มีข้อมูลให้ export");
     return;
+  } 
+
+  const dates = records
+    .map(r => new Date(r.repairReportDate))
+    .filter(d => !isNaN(d.getTime())); // กันค่าวันที่ผิด
+
+  if (dates.length === 0) {
+    alert("ไม่พบวันที่ที่ถูกต้อง");
+    return;
   }
 
+  const minDateObj = new Date(Math.min(...dates.map(d => d.getTime())));
+  const maxDateObj = new Date(Math.max(...dates.map(d => d.getTime())));
+
+
+  const toBuddhistDate = (date: Date): string => {
+    const yearBE = date.getFullYear() + 543;
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${yearBE}${month}${day}`;
+  };
+
+  const minDate = toBuddhistDate(minDateObj);
+  const maxDate = toBuddhistDate(maxDateObj);
+
+  var fileName = "";
+  if(records.length === 1 && records[0].jobNumber) {
+    fileName = `${records[0].jobNumber}-${records[0].licensePlate}-${records[0].repairParts[0].partName}.xlsx`;
+  } else {
+    fileName = `${minDate.replace(/-/g, "")}-${maxDate.replace(/-/g, "")}.xlsx`;
+
+  }
   const workbook = new ExcelJS.Workbook();
   workbook.calcProperties.fullCalcOnLoad = true;
   const logoDataUrl = await toBase64DataUrl(hinoLogo);
@@ -777,7 +807,8 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   link.setAttribute("href", url);
-  link.setAttribute("download", `repair_records_${new Date().toISOString().split("T")[0]}.xlsx`);
+  link.setAttribute("download", fileName);
+
   link.style.visibility = "hidden";
   document.body.appendChild(link);
   link.click();

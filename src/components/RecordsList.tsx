@@ -110,7 +110,7 @@ const filteredRecords = records
     }
 
     const frameId = window.requestAnimationFrame(() => {
-      generateRepairPDFFromHTML(pdfContainerRef.current!);
+      generateRepairPDFFromHTML(pdfContainerRef.current! , pdfRecords);
       setIsPreparingPdf(false);
     });
 
