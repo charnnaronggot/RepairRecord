@@ -46,3 +46,16 @@ export async function deleteRepairRecord(id: string): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, id);
   await deleteDoc(docRef);
 }
+
+export async function getNextJobNumber(): Promise<string> {
+const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+
+let max = 0;
+querySnapshot.forEach((d) => {
+const raw = String((d.data() as Partial<RepairRecord>).jobNumber ?? "").trim();
+const n = Number(raw);
+if (Number.isFinite(n) && n > max) max = n;
+});
+
+return String(max + 1).padStart(3, "0");
+}

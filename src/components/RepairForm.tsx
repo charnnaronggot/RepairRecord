@@ -1,11 +1,11 @@
-import { useState , useRef } from "react";
+import { useState , useRef , useEffect} from "react";
 import Camera from "./Camera";
 import RepairItemsTable from "./RepairItemsTable";
 import RepairPartsTable from "./RepairPartsTable";
 import AutocompleteInput from "./AutocompleteInput";
 import type { RepairRecord, RepairItem, RepairPart } from "../types/RepairRecord";
 import { emptyRepairRecord } from "../types/RepairRecord";
-import { addRepairRecord, updateRepairRecord } from "../services/firebaseService";
+import { addRepairRecord, updateRepairRecord , getNextJobNumber  } from "../services/firebaseService";
 import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
 import { clientsList, brandsList } from "../config/clientsAndBrands";
 import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
@@ -37,6 +37,24 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
   const handlePhotoCapture = (imageData: string) => {
     setForm((prev) => ({ ...prev, photo: imageData }));
   };
+
+  useEffect(() => {
+    if (isEdit) return;
+
+    let mounted = true;
+    getNextJobNumber()
+    .then((next) => {
+    if (!mounted) return;
+    setForm((prev) => ({ ...prev, jobNumber: next }));
+    })
+    .catch((err) => {
+    console.error("Failed to generate job number:", err);
+    });
+
+    return () => {
+    mounted = false;
+    };
+    }, [isEdit]);
 
   const handleSave = async () => {
     
@@ -88,9 +106,9 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
         {/* <p>{isEdit ? "Repair Record System - Edit" : "Repair Record System"}</p> */}
       </header>
 
-      <form onSubmit={(e) => e.preventDefault()}>
+      <form onSubmit={(e) => e.preventDefault()} >
         {/* ─── Vehicle & Client Info Grid ─── */}
-        <section className="form-section">
+        <section className="form-section" >
           <h2>ข้อมูลลูกค้า & ยานพาหนะ</h2>
           <div className="form-grid">
             {fields.map((f) => (
@@ -113,13 +131,15 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
                     type={f.type}
                   />
                 ) : (
-                  <input
-                    className="form-input"
-                    type={f.type ?? "text"}
-                    value={form[f.key] as string}
-                    placeholder={f.placeholder}
-                    onChange={(e) => updateField(f.key, e.target.value)}
-                  />
+                <input
+                  className="form-input"
+                  type={f.type ?? "text"}
+                  value={form[f.key] as string}
+                  placeholder={f.placeholder}
+                  onChange={(e) => updateField(f.key, e.target.value)}
+                  readOnly={f.key === "jobNumber"}
+                  disabled={f.key === "jobNumber"}
+                />
                 )}
               </div>
             ))}
