@@ -663,6 +663,59 @@ body {
   border: 1px solid #f5c6cb;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+/* ปุ่มก่อนหน้า / ถัดไป */
+.page-btn {
+  padding: 6px 12px;
+  border: 1px solid #cfd4da;
+  background-color: #f8f9fa;
+  color: #495057;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(.disabled) {
+  background-color: #e9ecef;
+}
+
+/* ปุ่มที่กดไม่ได้ */
+.page-btn.disabled {
+  color: #adb5bd;
+  background-color: #f1f3f5;
+  border-color: #dee2e6;
+  cursor: not-allowed;
+}
+
+/* ตัวเลขหน้า */
+.page-number {
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  color: #495057;
+  background-color: #ffffff;
+}
+
+/* หน้าปัจจุบัน */
+.page-number.active {
+  background-color: #0d6efd; /* สีหลัก (ฟ้า) */
+  color: #ffffff;
+  border-color: #0d6efd;
+  font-weight: 600;
+}
+
 /* ────────────── Responsive ────────────── */
 @media (max-width: 600px) {
   .form-grid {

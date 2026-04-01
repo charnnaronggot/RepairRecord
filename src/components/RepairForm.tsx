@@ -34,6 +34,8 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
       remarks: normalizedRemarks,
     };
   });
+  const currentYear = new Date().getFullYear() ;
+  const buddhistYear = currentYear + 543;
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const isEdit = !!initialRecord?.id;
@@ -62,19 +64,23 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
     if (isEdit) return;
 
     let mounted = true;
-    getNextJobNumber()
-    .then((next) => {
-    if (!mounted) return;
-    setForm((prev) => ({ ...prev, jobNumber: next }));
-    })
-    .catch((err) => {
-    console.error("Failed to generate job number:", err);
-    });
+    getNextJobNumber(currentYear)
+      .then((next) => {
+        if (!mounted) return;
+        setForm((prev) => ({
+          ...prev,
+          jobNumber: next,
+          invoiceNumber: `INV-${buddhistYear}-${next}`,
+        }));
+      })
+      .catch((err) => {
+        console.error("Failed to generate job number:", err);
+      });
 
     return () => {
-    mounted = false;
+      mounted = false;
     };
-    }, [isEdit]);
+  }, [isEdit, currentYear, buddhistYear]);
 
   const handleSave = async () => {
     
@@ -167,8 +173,8 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
                   value={form[f.key] as string}
                   placeholder={f.placeholder}
                   onChange={(e) => updateField(f.key, e.target.value)}
-                  readOnly={f.key === "jobNumber"}
-                  disabled={f.key === "jobNumber"}
+                  readOnly={f.key === "jobNumber"|| f.key === "invoiceNumber"}
+                  disabled={f.key === "jobNumber"|| f.key === "invoiceNumber"}
                 />
                 )}
               </div>
