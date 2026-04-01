@@ -331,6 +331,28 @@ body {
   border-color: var(--primary-light);
 }
 
+.date-range-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #555);
+}
+
+.filter-date {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  background: white;
+  cursor: pointer;
+  outline: none;
+}
+
+.filter-date:focus {
+  border-color: var(--primary-light);
+}
+
 .records-table {
   width: 100%;
   border-collapse: collapse;

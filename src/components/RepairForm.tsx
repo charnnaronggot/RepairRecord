@@ -2,14 +2,16 @@ import { useState , useRef , useEffect} from "react";
 import Camera from "./Camera";
 import RepairItemsTable from "./RepairItemsTable";
 import RepairPartsTable from "./RepairPartsTable";
+import RemarkTable from "./RemarkTable";
 import AutocompleteInput from "./AutocompleteInput";
-import type { RepairRecord, RepairItem, RepairPart } from "../types/RepairRecord";
+import type { RepairRecord, RepairItem, RepairPart, RemarkItem } from "../types/RepairRecord";
 import { emptyRepairRecord } from "../types/RepairRecord";
 import { addRepairRecord, updateRepairRecord , getNextJobNumber  } from "../services/firebaseService";
 import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
 import { clientsList, brandsList } from "../config/clientsAndBrands";
 import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
 import { exportToExcel } from "../utils/exportUtils";
+import { getNowDateTimeLocalValue, toDateTimeLocalValue } from "../utils/dateTime";
 interface RepairFormProps {
   initialRecord?: RepairRecord;
   onSave?: () => void;
@@ -17,7 +19,21 @@ interface RepairFormProps {
 }
 
 export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFormProps) {
-  const [form, setForm] = useState<RepairRecord>(initialRecord || { ...emptyRepairRecord });
+  const [form, setForm] = useState<RepairRecord>(() => {
+    const baseForm = initialRecord ? { ...initialRecord } : { ...emptyRepairRecord };
+    const normalizedRemarks =
+      baseForm.remarks && baseForm.remarks.length > 0
+        ? baseForm.remarks
+        : baseForm.remark
+          ? [{ id: crypto.randomUUID(), description: baseForm.remark }]
+          : [];
+
+    return {
+      ...baseForm,
+      repairReportDate: toDateTimeLocalValue(baseForm.repairReportDate),
+      remarks: normalizedRemarks,
+    };
+  });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const isEdit = !!initialRecord?.id;
@@ -32,6 +48,10 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
 
   const handlePartsChange = (parts: RepairPart[]) => {
     setForm((prev) => ({ ...prev, repairParts: parts }));
+  };
+
+  const handleRemarkChange = (remarks: RemarkItem[]) => {
+    setForm((prev) => ({ ...prev, remarks, remark: remarks.map((item) => item.description).join("\n") }));
   };
 
   const handlePhotoCapture = (imageData: string) => {
@@ -67,12 +87,22 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
       } else {
         const id = await addRepairRecord(form);
         setMessage(`บันทึกสำเร็จ! (ID: ${id})`);
-        setForm({ ...emptyRepairRecord });
+        setForm({
+          ...emptyRepairRecord,
+          repairReportDate: getNowDateTimeLocalValue(),
+        });
       }
       onSave?.();
     } catch (err) {
       console.error(err);
-      setMessage("เกิดข้อผิดพลาดในการบันทึก — กรุณาตรวจสอบการเชื่อมต่อ Firebase"); 
+      if (
+        (err instanceof Error && err.message === "REPAIR_RECORD_NOT_FOUND") ||
+        (typeof err === "object" && err !== null && "code" in err && (err as { code?: string }).code === "not-found")
+      ) {
+        setMessage("ไม่พบรายการนี้ในระบบ (อาจถูกลบไปแล้ว) กรุณากลับไปรายการและรีโหลดใหม่");
+      } else {
+        setMessage("เกิดข้อผิดพลาดในการบันทึก — กรุณาตรวจสอบการเชื่อมต่อ Firebase");
+      }
     } finally {
       setSaving(false);
     }
@@ -80,7 +110,7 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
 
   const handleGeneratePDF = () => {
     if (!pdfTemplateRef.current) return;
-    generateRepairPDFFromHTML(pdfTemplateRef.current);
+    generateRepairPDFFromHTML(pdfTemplateRef.current , [form]);
   };
 
   const fields: { key: keyof RepairRecord; label: string; type?: string; placeholder?: string }[] = [
@@ -88,7 +118,7 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
     { key: "client", label: "ลูกค้า (Client)", placeholder: "ชื่อลูกค้า / บริษัท" },
     { key: "phone", label: "เบอร์โทร (Phone)", placeholder: "0XX-XXX-XXXX", type: "tel" },
     { key: "driver", label: "พนักงานขับรถ", placeholder: "พนักงานขับรถ" },
-    { key: "repairReportDate", label: "วันที่รายงาน (Date)", type: "date" },
+    { key: "repairReportDate", label: "วันที่รายงาน (Date & Time)", type: "datetime-local" },
     { key: "brand", label: "ยี่ห้อ (Brand)", placeholder: "e.g. Isuzu" },
     { key: "vehicleModel", label: "รุ่นรถ (Model)", placeholder: "e.g.GXZ360 " },
     { key: "vehicleNumber", label: "หมายเลขรถ (Vehicle No.)", placeholder: "Vehicle Number" },
@@ -160,6 +190,10 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
         {/* ─── Repair Parts Table ─── */}
         <section className="form-section">
           <RepairPartsTable parts={form.repairParts} onChange={handlePartsChange} />
+        </section>
+
+        <section className="form-section">
+          <RemarkTable items={form.remarks ?? []} onChange={handleRemarkChange} />
         </section>
 
         {/* ─── Actions ─── */}

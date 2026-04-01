@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import hinoLogo from "../assets/images/hino_logo.jpg";
+import { formatThaiDateTime } from "./dateTime";
 
 const BORDER_THIN: Partial<ExcelJS.Borders> = {
   top: { style: "thin" },
@@ -10,13 +11,6 @@ const BORDER_THIN: Partial<ExcelJS.Borders> = {
   bottom: { style: "thin" },
   right: { style: "thin" },
 };
-
-function formatThaiDateOnly(value: string | undefined): string {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("th-TH");
-}
 
 /**
  * Export records to CSV format
@@ -66,7 +60,7 @@ export function exportToCSV(records: RepairRecord[]): void {
     record.status,
     record.repairItems.length,
     record.repairParts.length,
-    formatThaiDateOnly(record.repairReportDate),
+    formatThaiDateTime(record.repairReportDate),
   ]);
 
   // Escape CSV values
@@ -125,7 +119,7 @@ export function exportListToPDF(records: RepairRecord[]): void {
       `${record.brand || ""} ${record.vehicleModel || ""}`.trim() || "-",
       record.licensePlate || "-",
       record.status === "completed" ? "completed" : "pending",
-      formatThaiDateOnly(record.repairReportDate),
+      formatThaiDateTime(record.repairReportDate),
     ]),
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [44, 62, 80], textColor: 255 },
@@ -239,6 +233,8 @@ interface ExcelRowData {
   index: number;
   repairText: string;
   partText: string;
+  partUnit: string;
+  remarkText: string;
   quantity: string | number;
   unitPrice: string | number;
   totalPrice: string | number;
@@ -250,8 +246,9 @@ const BASE_TABLE_ROW_HEIGHT = 20;
 const TABLE_LINE_HEIGHT = 14;
 const REPAIR_TEXT_CHARS_PER_LINE = 32;
 const PART_TEXT_CHARS_PER_LINE = 32;
+const REMARK_TEXT_CHARS_PER_LINE = 18;
 const INFO_SECTION_ROW_HEIGHT = 22;
-const SIGNATURE_BOTTOM_ROW = 33;
+const SIGNATURE_BOTTOM_ROW = 36;
 const DETAIL_START_ROW = 14;
 const DETAIL_END_ROW = SIGNATURE_BOTTOM_ROW - 2;
 const PAGE_ROW_CAPACITY_UNITS = DETAIL_END_ROW - DETAIL_START_ROW + 1;
@@ -264,10 +261,17 @@ function estimateTextLines(text: string, charsPerLine: number): number {
     .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
 }
 
-function estimateRowMetrics(repairText: string, partText: string): { rowUnits: number; rowHeight: number } {
+function estimateRowMetrics(
+  repairText: string,
+  partText: string,
+  partUnitText: string,
+  remarkText: string
+): { rowUnits: number; rowHeight: number } {
   const repairLines = estimateTextLines(repairText, REPAIR_TEXT_CHARS_PER_LINE);
   const partLines = estimateTextLines(partText, PART_TEXT_CHARS_PER_LINE);
-  const lines = Math.max(1, repairLines, partLines);
+  const partUnitLines = estimateTextLines(partUnitText, REMARK_TEXT_CHARS_PER_LINE);
+  const remarkLines = estimateTextLines(remarkText, REMARK_TEXT_CHARS_PER_LINE);
+  const lines = Math.max(1, repairLines, partLines, partUnitLines, remarkLines);
   const rowHeight = Math.max(BASE_TABLE_ROW_HEIGHT, lines * TABLE_LINE_HEIGHT);
 
   return {
@@ -277,13 +281,23 @@ function estimateRowMetrics(repairText: string, partText: string): { rowUnits: n
 }
 
 function buildExcelRows(record: RepairRecord): ExcelRowData[] {
-  const contentCount = Math.max(record.repairItems.length, record.repairParts.length, 1);
+  const normalizedRemarks =
+    record.remarks && record.remarks.length > 0
+      ? record.remarks
+      : record.remark
+        ? [{ id: "legacy-remark", description: record.remark }]
+        : [];
+
+  const contentCount = Math.max(record.repairItems.length, record.repairParts.length, normalizedRemarks.length, 1);
 
   const rows = Array.from({ length: contentCount }, (_, i) => {
     const item = record.repairItems[i];
     const part = record.repairParts[i];
+    const remark = normalizedRemarks[i];
     const repairText = item?.description || "";
     const partText = part?.partName || "";
+    const partUnit = part?.unit || "";
+    const remarkText = remark?.description || "";
     const quantity = part?.quantity ?? "";
     const unitPrice = part?.unitPrice ?? "";
     const totalPrice = part?.totalPrice ?? "";
@@ -291,6 +305,8 @@ function buildExcelRows(record: RepairRecord): ExcelRowData[] {
     const hasData =
       repairText.trim() !== "" ||
       partText.trim() !== "" ||
+      partUnit.trim() !== "" ||
+      remarkText.trim() !== "" ||
       String(quantity).trim() !== "" ||
       String(unitPrice).trim() !== "" ||
       String(totalPrice).trim() !== "";
@@ -298,6 +314,8 @@ function buildExcelRows(record: RepairRecord): ExcelRowData[] {
     return {
       repairText,
       partText,
+      partUnit,
+      remarkText,
       quantity,
       unitPrice,
       totalPrice,
@@ -306,12 +324,14 @@ function buildExcelRows(record: RepairRecord): ExcelRowData[] {
   }).filter((row) => row.hasData);
 
   if (rows.length === 0) {
-    const metrics = estimateRowMetrics("", "");
+    const metrics = estimateRowMetrics("", "", "", "");
     return [
       {
         index: 1,
         repairText: "",
         partText: "",
+        partUnit: "",
+        remarkText: "",
         quantity: "",
         unitPrice: "",
         totalPrice: "",
@@ -322,12 +342,14 @@ function buildExcelRows(record: RepairRecord): ExcelRowData[] {
   }
 
   return rows.map((row, index) => {
-    const metrics = estimateRowMetrics(row.repairText, row.partText);
+    const metrics = estimateRowMetrics(row.repairText, row.partText, row.partUnit, row.remarkText);
 
     return {
       index: index + 1,
       repairText: row.repairText,
       partText: row.partText,
+      partUnit: row.partUnit,
+      remarkText: row.remarkText,
       quantity: row.quantity,
       unitPrice: row.unitPrice,
       totalPrice: row.totalPrice,
@@ -373,6 +395,8 @@ function toPageChunks(items: ExcelRowData[], maxUnits: number): ExcelRowData[][]
         index: runningIndex,
         repairText: "",
         partText: "",
+        partUnit: "",
+        remarkText: "",
         quantity: "",
         unitPrice: "",
         totalPrice: "",
@@ -552,17 +576,16 @@ async function buildTemplateSheet(
     { width: 6 },
     { width: 20 },
     { width: 20 },
-    { width: 10 },
+    { width: 8 },
     { width: 9 },
     { width: 10 },
     { width: 9 },
-    { width: 10 },
+    { width: 12 },
   ];
   worksheet.mergeCells("A1:B4");
-  worksheet.mergeCells("C1:F1");
-  worksheet.mergeCells("C2:F2");
-  worksheet.mergeCells("C3:F3");
-  worksheet.mergeCells("C4:F4");
+  worksheet.mergeCells("C1:G1");
+  worksheet.mergeCells("C2:G2");
+  worksheet.mergeCells("C3:G4");
 
   worksheet.getRow(1).height = 28;
   worksheet.getRow(2).height = 20;
@@ -570,11 +593,11 @@ async function buildTemplateSheet(
   worksheet.getRow(4).height = 30;
 
   await addContainedImageToRange(workbook, worksheet, logoDataUrl, "jpeg", 1, 1, 2, 4);
-
+  
   setCell(worksheet, "C1", "บริษัท ประธานพรเซอร์วิซ จำกัด", { bold: true, fontSize: 16, align: "center" });
   setCell(worksheet, "C2", "124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110", { fontSize: 10, align: "center" });
-  setCell(worksheet, "C3", "เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477", { fontSize: 10, align: "center" });
-  setCell(worksheet, "C4", "ใบแจ้งซ่อม", { bold: true, fontSize: 16 , align: "center" });
+  // setCell(worksheet, "C3", "เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477", { fontSize: 10, align: "center" });
+  setCell(worksheet, "C3", "ใบแจ้งซ่อม", { bold: true, fontSize: 20 , align: "center" });
 
   worksheet.mergeCells("G6:H11");
 
@@ -611,7 +634,7 @@ async function buildTemplateSheet(
   setLabelValueCell(worksheet, "A10", "เลขเครื่อง", record.serialNumber || "-");
   setLabelValueCell(worksheet, "D10", "เลขไมล์", record.mileNumber || "-");
   setLabelValueCell(worksheet, "A11", "เลข Job", record.jobNumber || "-");
-  setLabelValueCell(worksheet, "D11", "วันที่ใบแจ้งซ่อม", record.repairReportDate || "-");
+  setLabelValueCell(worksheet, "D11", "วันที่ใบแจ้งซ่อม", formatThaiDateTime(record.repairReportDate));
 
   applyBorderRange(worksheet, 6, 11, 1, 6);
 
@@ -621,17 +644,15 @@ async function buildTemplateSheet(
 
 
 
-  const headers = ["ลำดับ", "รายการซ่อม", "รายการอะไหล่", "จำนวน", "ราคา/หน่วย", "ราคา", "หมายเหตุ"];
+  const headers = ["ลำดับ", "รายการซ่อม", "รายการอะไหล่", "จำนวน", "หน่วย", "ราคา/หน่วย", "ราคา", "หมายเหตุ"];
   worksheet.getRow(tableHeaderRow).height = 24;
   headers.forEach((header, i) => {
     const cell = worksheet.getCell(tableHeaderRow, i + 1);
     cell.value = header; 
-    cell.font = { name: "Arial", size: 11, bold: true };
+    cell.font = { name: "Arial", size: 10, bold: true };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = BORDER_THIN;
   });
-  worksheet.mergeCells(`G${tableHeaderRow}:H${tableHeaderRow}`);
-  worksheet.getCell(tableHeaderRow, 8).border = BORDER_THIN;
 
   for (let i = 0; i < pageRows.length; i += 1) {
     const row = tableStartRow + i;
@@ -645,19 +666,21 @@ async function buildTemplateSheet(
     worksheet.getCell(row, 2).value = rowData.repairText;
     worksheet.getCell(row, 3).value = rowData.partText;
     worksheet.getCell(row, 4).value = rowData.quantity;
-    worksheet.getCell(row, 5).value = rowData.unitPrice;
-    worksheet.getCell(row, 6).value = {
-      formula: `IF(AND(D${row}<>"",E${row}<>""),D${row}*E${row},"")`,
+    worksheet.getCell(row, 5).value = rowData.partUnit;
+    worksheet.getCell(row, 6).value = rowData.unitPrice;
+    worksheet.getCell(row, 6).numFmt = "#,##0.00";
+    worksheet.getCell(row, 7).value = {
+      formula: `IF(AND(D${row}<>"",F${row}<>""),D${row}*F${row},"")`,
       result: rowData.totalPrice ? Number(rowData.totalPrice) : undefined,
     };
-    worksheet.getCell(row, 7).value = "";
-    worksheet.mergeCells(`G${row}:H${row}`);
+    worksheet.getCell(row, 7).numFmt = "#,##0.00";
+    worksheet.getCell(row, 8).value = rowData.remarkText;
 
     for (let c = 1; c <= 8; c += 1) {
       const cell = worksheet.getCell(row, c);
       cell.font = { name: "Arial", size: 10 };
       cell.alignment = {
-        horizontal: c === 1 || c >= 4 ? "center" : "left",
+        horizontal: c === 1 || c === 4 || c === 5 || c === 6 || c === 7 ? "center" : "left",
         vertical: "middle",
         wrapText: true,
       };
@@ -670,16 +693,17 @@ async function buildTemplateSheet(
   if (pageIndex === totalPages - 1) {
     const totalRow = signatureRow - 1;
     const lastDataRow = DETAIL_END_ROW;
-    worksheet.mergeCells(`A${totalRow}:E${totalRow}`);
-    worksheet.mergeCells(`F${totalRow}:H${totalRow}`);
+    worksheet.mergeCells(`A${totalRow}:F${totalRow}`);
+    worksheet.mergeCells(`G${totalRow}:H${totalRow}`);
 
     setCell(worksheet, `A${totalRow}`, "รวมราคา", { bold: true, align: "center", fontSize: 10 });
-    worksheet.getCell(`F${totalRow}`).value = {
-      formula: `SUMIFS(F${tableStartRow}:F${lastDataRow},A${tableStartRow}:A${lastDataRow},"<>")`,
+    worksheet.getCell(`G${totalRow}`).value = {
+      formula: `SUMIFS(G${tableStartRow}:G${lastDataRow},A${tableStartRow}:A${lastDataRow},"<>")`,
       result: grandTotal,
     };
-    worksheet.getCell(`F${totalRow}`).font = { name: "Arial", size: 10, bold: true };
-    worksheet.getCell(`F${totalRow}`).alignment = { horizontal: "right", vertical: "middle" };
+    worksheet.getCell(`G${totalRow}`).numFmt = "#,##0.00";
+    worksheet.getCell(`G${totalRow}`).font = { name: "Arial", size: 10, bold: true };
+    worksheet.getCell(`G${totalRow}`).alignment = { horizontal: "right", vertical: "middle" };
 
     applyBorderRange(worksheet, totalRow, totalRow, 1, 8);
   }
@@ -702,8 +726,38 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
   if (records.length === 0) {
     alert("ไม่มีข้อมูลให้ export");
     return;
+  } 
+
+  const dates = records
+    .map(r => new Date(r.repairReportDate))
+    .filter(d => !isNaN(d.getTime())); // กันค่าวันที่ผิด
+
+  if (dates.length === 0) {
+    alert("ไม่พบวันที่ที่ถูกต้อง");
+    return;
   }
 
+  const minDateObj = new Date(Math.min(...dates.map(d => d.getTime())));
+  const maxDateObj = new Date(Math.max(...dates.map(d => d.getTime())));
+
+
+  const toBuddhistDate = (date: Date): string => {
+    const yearBE = date.getFullYear() + 543;
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${yearBE}${month}${day}`;
+  };
+
+  const minDate = toBuddhistDate(minDateObj);
+  const maxDate = toBuddhistDate(maxDateObj);
+
+  var fileName = "";
+  if(records.length === 1 && records[0].jobNumber) {
+    fileName = `${records[0].jobNumber}-${records[0].licensePlate}-${records[0].repairParts[0].partName}.xlsx`;
+  } else {
+    fileName = `${minDate.replace(/-/g, "")}-${maxDate.replace(/-/g, "")}.xlsx`;
+
+  }
   const workbook = new ExcelJS.Workbook();
   workbook.calcProperties.fullCalcOnLoad = true;
   const logoDataUrl = await toBase64DataUrl(hinoLogo);
@@ -734,13 +788,14 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
         const formulaRefs = pageSheetNames
           .map((sheetName) => {
             const sheetRef = sheetNameForFormula(sheetName);
-            return `SUMIFS(${sheetRef}!F${DETAIL_START_ROW}:F${DETAIL_END_ROW},${sheetRef}!A${DETAIL_START_ROW}:A${DETAIL_END_ROW},"<>")`;
+            return `SUMIFS(${sheetRef}!G${DETAIL_START_ROW}:G${DETAIL_END_ROW},${sheetRef}!A${DETAIL_START_ROW}:A${DETAIL_END_ROW},"<>")`;
           })
           .join(",");
 
-        lastSheet.getCell(`F${totalRow}`).value = {
+        lastSheet.getCell(`G${totalRow}`).value = {
           formula: formulaRefs ? `SUM(${formulaRefs})` : "0",
         };
+        lastSheet.getCell(`G${totalRow}`).numFmt = "#,##0.00";
       }
     }
   }
@@ -752,7 +807,8 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   link.setAttribute("href", url);
-  link.setAttribute("download", `repair_records_${new Date().toISOString().split("T")[0]}.xlsx`);
+  link.setAttribute("download", fileName);
+
   link.style.visibility = "hidden";
   document.body.appendChild(link);
   link.click();

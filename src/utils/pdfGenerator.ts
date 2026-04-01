@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { RepairRecord } from "../types/RepairRecord";
 import autoTable from "jspdf-autotable";
+import { formatThaiDateTime } from "./dateTime";
 
 const DEFAULT_EXPORT_FONT = "Arial";
 
@@ -17,6 +18,12 @@ const PDF_FONT_SIZE = {
 export function generateRepairPDF(record: RepairRecord): void {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
+  const normalizedRemarks =
+    record.remarks && record.remarks.length > 0
+      ? record.remarks
+      : record.remark
+        ? [{ id: "legacy-remark", description: record.remark }]
+        : [];
 
   // ─── Header ───
   doc.setFontSize(PDF_FONT_SIZE.title);
@@ -40,7 +47,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     ["Client", record.client],
     ["Phone", record.phone],
     ["Driver", record.driver],
-    ["Date", record.repairReportDate],
+    ["Date", formatThaiDateTime(record.repairReportDate)],
     ["Brand", record.brand],
     ["Model", record.vehicleModel],
   ];
@@ -100,13 +107,10 @@ export function generateRepairPDF(record: RepairRecord): void {
 
   autoTable(doc, {
     startY: infoEndY + 12,
-    head: [["#", "Description", "Qty", "Unit", "Unit Price", "Total"]],
+    head: [["#", "Description"]],
     body: itemTableBody,
     foot: [
       [
-        "",
-        "",
-        "",
         "",
         "Subtotal",
         // itemsTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
@@ -118,10 +122,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     styles: { fontSize: PDF_FONT_SIZE.table, cellPadding: 3 },
     columnStyles: {
       0: { halign: "center", cellWidth: 12 },
-      2: { halign: "center", cellWidth: 18 },
-      3: { halign: "center", cellWidth: 20 },
-      4: { halign: "right", cellWidth: 28 },
-      5: { halign: "right", cellWidth: 28 },
+      1: { cellWidth: 176 },
     },
     margin: { left: 15, right: 15 },
   });
@@ -136,7 +137,7 @@ export function generateRepairPDF(record: RepairRecord): void {
     (idx + 1).toString(),
     part.partName,
     part.quantity.toString(),
-    // part.unit,
+    part.unit || "-",
     part.unitPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
     part.totalPrice.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
   ]);
@@ -172,6 +173,30 @@ export function generateRepairPDF(record: RepairRecord): void {
     margin: { left: 15, right: 15 },
   });
 
+  if (normalizedRemarks.length > 0) {
+    const remarksTableStartY = (doc as any).lastAutoTable.finalY + 8;
+    doc.setFontSize(PDF_FONT_SIZE.sectionTitle);
+    doc.setFont(DEFAULT_EXPORT_FONT, "bold");
+    doc.text("Remarks (หมายเหตุ)", 18, remarksTableStartY);
+
+    autoTable(doc, {
+      startY: remarksTableStartY + 4,
+      head: [["#", "Remark"]],
+      body: normalizedRemarks.map((remark, idx) => [
+        (idx + 1).toString(),
+        remark.description || "-",
+      ]),
+      theme: "grid",
+      headStyles: { fillColor: [84, 110, 122], textColor: 255, fontStyle: "bold" },
+      styles: { fontSize: PDF_FONT_SIZE.table, cellPadding: 3 },
+      columnStyles: {
+        0: { halign: "center", cellWidth: 12 },
+        1: { cellWidth: 168 },
+      },
+      margin: { left: 15, right: 15 },
+    });
+  }
+
   // ─── Footer ───
   const pageHeight = doc.internal.pageSize.getHeight();
   doc.setFontSize(PDF_FONT_SIZE.footer);
@@ -203,7 +228,7 @@ export function generateDummyPDF(): void {
     client: "บริษัท ทดสอบ จำกัด",
     phone: "081-234-5678",
     driver: "นายสมชาย พนักงานขับรถ",
-    repairReportDate: "2026-03-07",
+    repairReportDate: "2026-03-07T10:30",
     brand: "Toyota",
     vehicleModel: "Hilux Revo",
     vehicleNumber: "VH-12345",
@@ -219,7 +244,6 @@ export function generateDummyPDF(): void {
         id: "1",
         description: "เปลี่ยนน้ำมันเครื่อง",
         // quantity: 1,
-        // unit: "ครั้ง",
         // unitPrice: 2500,
         // totalPrice: 2500,
       },
@@ -227,7 +251,6 @@ export function generateDummyPDF(): void {
         id: "2",
         description: "ผ้าเบรกหน้า",
         // quantity: 2,
-        // unit: "ชุด",
         // unitPrice: 1800,
         // totalPrice: 3600,
       },
@@ -235,7 +258,6 @@ export function generateDummyPDF(): void {
         id: "3",
         description: "กรองอากาศ",
         // quantity: 1,
-        // unit: "ชิ้น",
         // unitPrice: 450,
         // totalPrice: 450,
       },
@@ -243,7 +265,6 @@ export function generateDummyPDF(): void {
         id: "4",
         description: "ค่าแรงช่าง",
         // quantity: 3,
-        // unit: "ชั่วโมง",
         // unitPrice: 800,
         // totalPrice: 2400,
       },
@@ -253,7 +274,7 @@ export function generateDummyPDF(): void {
         id: "p1",
         partName: "Oil Filter",
         quantity: 1,
-        // unit: "ชิ้น",
+        unit: "ชิ้น",
         unitPrice: 350,
         totalPrice: 350,
       },
@@ -261,7 +282,7 @@ export function generateDummyPDF(): void {
         id: "p2",
         partName: "Brake Pads (Front)",
         quantity: 1,
-        // unit: "ชุด",
+        unit: "ชุด",
         unitPrice: 2200,
         totalPrice: 2200,
       },
@@ -269,7 +290,7 @@ export function generateDummyPDF(): void {
         id: "p3",
         partName: "Air Filter",
         quantity: 1,
-        // unit: "ชิ้น",
+        unit: "ชิ้น",
         unitPrice: 450,
         totalPrice: 450,
       },
@@ -277,17 +298,58 @@ export function generateDummyPDF(): void {
         id: "p4",
         partName: "Coolant",
         quantity: 2,
-        // unit: "ลิตร",
+        unit: "ลิตร",
         unitPrice: 400,
         totalPrice: 800,
       },
     ],
+    remarks: [
+      {
+        id: "r1",
+        description: "ลูกค้าแจ้งให้ตรวจสอบเสียงดังบริเวณล้อหน้า",
+      },
+      {
+        id: "r2",
+        description: "แนะนำให้กลับมาตรวจเช็กซ้ำหลังใช้งาน 1 สัปดาห์",
+      },
+    ],
+    remark: "ลูกค้าแจ้งให้ตรวจสอบเสียงดังบริเวณล้อหน้า\nแนะนำให้กลับมาตรวจเช็กซ้ำหลังใช้งาน 1 สัปดาห์",
   };
 
   generateRepairPDF(dummyRecord);
 }
 
-export function generateRepairPDFFromHTML(htmlElement: HTMLElement): void {
+export function generateRepairPDFFromHTML(htmlElement: HTMLElement , records: RepairRecord[]): void {
+    const dates = records
+    .map(r => new Date(r.repairReportDate))
+    .filter(d => !isNaN(d.getTime())); // กันค่าวันที่ผิด
+
+  if (dates.length === 0) {
+    alert("ไม่พบวันที่ที่ถูกต้อง");
+    return;
+  }
+
+  const minDateObj = new Date(Math.min(...dates.map(d => d.getTime())));
+  const maxDateObj = new Date(Math.max(...dates.map(d => d.getTime())));
+
+
+  const toBuddhistDate = (date: Date): string => {
+    const yearBE = date.getFullYear() + 543;
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${day}${month}${yearBE}`;
+  };
+
+  const minDate = toBuddhistDate(minDateObj);
+  const maxDate = toBuddhistDate(maxDateObj);
+
+  var fileName = "";
+  if(records.length === 1 && records[0].jobNumber) {
+    fileName = `${records[0].jobNumber}-${records[0].licensePlate}-${records[0].repairParts[0].partName}.pdf`;
+  } else {
+    fileName = `${minDate.replace(/-/g, "")}-${maxDate.replace(/-/g, "")}.pdf`;
+
+  }
   const render = async () => {
     const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -342,7 +404,7 @@ export function generateRepairPDFFromHTML(htmlElement: HTMLElement): void {
       doc.addImage(imgData, "PNG", x, y, renderWidth, renderHeight, undefined, "FAST");
     }
 
-    doc.save(`repair_report_${Date.now()}.pdf`);
+    doc.save(`${fileName}`);
   };
 
   void render();

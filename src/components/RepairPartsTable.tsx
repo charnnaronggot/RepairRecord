@@ -1,12 +1,30 @@
 import type { RepairPart } from "../types/RepairRecord";
 import { emptyRepairPart } from "../types/RepairRecord";
+// import AutocompleteInput from "./AutocompleteInput";
 
 interface RepairPartsTableProps {
   parts: RepairPart[];
   onChange: (parts: RepairPart[]) => void;
 }
 
+const COMMON_PART_UNITS = ["ชิ้น", "คู่", "งาน", "ครั้ง", "ชุด", "เส้น", "ลูก", "ตัว", "ลิตร" ,"kg" , "ข้าง" ,"ดวง" , "แผ่น" , "เพลา" ,"เที่ยว"];
+
 export default function RepairPartsTable({ parts, onChange }: RepairPartsTableProps) {
+  const roundTo2 = (value: number): number => Math.round(value * 100) / 100;
+  const normalizeQuantity = (value: string | number): number => {
+    if (value === "") return 0;
+
+    const numericValue = typeof value === "number"
+      ? value
+      : Number.parseInt(value.replace(/^0+(?=\d)/, ""), 10);
+
+    if (Number.isNaN(numericValue) || numericValue <= 0) {
+      return 0;
+    }
+
+    return Math.trunc(numericValue);
+  };
+
   const addRow = () => {
     onChange([
       ...parts,
@@ -22,9 +40,14 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
     onChange(
       parts.map((part) => {
         if (part.id !== id) return part;
-        const updated = { ...part, [field]: value };
+        const normalizedValue = field === "unitPrice"
+          ? roundTo2(Number(value) || 0)
+          : field === "quantity"
+            ? normalizeQuantity(value)
+            : value;
+        const updated = { ...part, [field]: normalizedValue };
         if (field === "quantity" || field === "unitPrice") {
-          updated.totalPrice = Number(updated.quantity) * Number(updated.unitPrice);
+          updated.totalPrice = roundTo2(Number(updated.quantity) * Number(updated.unitPrice));
         }
         return updated;
       })
@@ -49,7 +72,7 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
               <th style={{ width: "40px" }}>#</th>
               <th>ชื่ออะไหล่</th>
               <th style={{ width: "80px" }}>จำนวน</th>
-              {/* <th style={{ width: "80px" }}>หน่วย</th> */}
+              <th style={{ width: "140px" }}>หน่วย</th>
               <th style={{ width: "120px" }}>ราคา/หน่วย</th>
               <th style={{ width: "120px" }}>รวม</th>
               <th style={{ width: "60px" }}></th>
@@ -78,17 +101,27 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
                   <input
                     type="number"
                     min="0"
-                    value={part.quantity}
-                    onChange={(e) => updatePart(part.id, "quantity", Number(e.target.value))}
+                    step="1"
+                    value={part.quantity === 0 ? "" : part.quantity}
+                    onChange={(e) => updatePart(part.id, "quantity", e.target.value)}
                   />
                 </td>
-                {/* <td>
+                <td>
                   <input
                     type="text"
+                    list="repair-part-unit-options"
                     value={part.unit}
                     onChange={(e) => updatePart(part.id, "unit", e.target.value)}
+                    placeholder="เช่น ชิ้น / คู่ / งาน"
                   />
-                </td> */}
+                                    {/* <AutocompleteInput
+                                      value={form[f.key] as string}
+                                      onChange={(value) => updateField(f.key, value)}
+                                      suggestions={brandsList}
+                                      placeholder={f.placeholder}
+                                      type={f.type}
+                                    /> */}
+                </td>
                 <td>
                   <input
                     type="number"
@@ -101,6 +134,7 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
                 <td className="right">
                   {part.totalPrice.toLocaleString("th-TH", {
                     minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
                   })}
                 </td>
                 <td className="center">
@@ -123,6 +157,7 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
                   <strong>
                     {grandTotal.toLocaleString("th-TH", {
                       minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
                     })}
                   </strong>
                 </td>
@@ -131,6 +166,11 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
             </tfoot>
           )}
         </table>
+        <datalist id="repair-part-unit-options">
+          {COMMON_PART_UNITS.map((unit) => (
+            <option key={unit} value={unit} />
+          ))}
+        </datalist>
       </div>
     </div>
   );

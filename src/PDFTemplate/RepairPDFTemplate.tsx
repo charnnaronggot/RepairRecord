@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import type { RepairRecord } from "../types/RepairRecord";
 import "./RepairPDFTempalte.css";
 import hinoLogo from "../assets/images/hino_logo.jpg";
+import { formatThaiDateTime } from "../utils/dateTime";
 
 interface RepairPDFTemplateProps {
   form: RepairRecord;
@@ -13,8 +14,10 @@ interface PdfRow {
   description: string;
   partName: string;
   quantity: string;
+  unit: string;
   unitPrice: string;
   totalPrice: string;
+  remark: string;
 }
 
 const FIRST_PAGE_CAPACITY = 22;
@@ -23,7 +26,9 @@ const NEXT_PAGE_CAPACITY = 22;
 const estimateRowUnits = (row: PdfRow): number => {
   const descriptionUnits = Math.ceil(Math.max(row.description.length, 1) / 32);
   const partUnits = Math.ceil(Math.max(row.partName.length, 1) / 32);
-  return Math.max(1, descriptionUnits, partUnits);
+  const unitUnits = Math.ceil(Math.max(row.unit.length, 1) / 12);
+  const remarkUnits = Math.ceil(Math.max(row.remark.length, 1) / 20);
+  return Math.max(1, descriptionUnits, partUnits, unitUnits, remarkUnits);
 };
 
 const chunkRowsByCapacity = (rows: PdfRow[]): PdfRow[][] => {
@@ -57,7 +62,14 @@ const chunkRowsByCapacity = (rows: PdfRow[]): PdfRow[][] => {
 };
 
 export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTemplateProps) {
-  const totalRows = Math.max(20, form.repairItems.length, form.repairParts.length);
+  const normalizedRemarks =
+    form.remarks && form.remarks.length > 0
+      ? form.remarks
+      : form.remark
+        ? [{ id: "legacy-remark", description: form.remark }]
+        : [];
+
+  const totalRows = Math.max(20, form.repairItems.length, form.repairParts.length, normalizedRemarks.length);
   const grandTotal = form.repairParts.reduce(
     (sum, part) => sum + Number(part.totalPrice || 0),
     0
@@ -66,13 +78,28 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
   const rows: PdfRow[] = Array.from({ length: totalRows }, (_, i) => {
     const item = form.repairItems?.[i];
     const part = form.repairParts?.[i];
+    const remark = normalizedRemarks?.[i];
     return {
       index: i + 1,
       description: item?.description ?? "",
       partName: part?.partName ?? "",
       quantity: part?.quantity != null ? String(part.quantity) : "",
-      unitPrice: part?.unitPrice != null ? part.unitPrice.toLocaleString("th-TH") : "",
-      totalPrice: part?.totalPrice != null ? part.totalPrice.toLocaleString("th-TH") : "",
+      unit: part?.unit ?? "",
+      unitPrice:
+        part?.unitPrice != null
+          ? part.unitPrice.toLocaleString("th-TH", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          : "",
+      totalPrice:
+        part?.totalPrice != null
+          ? part.totalPrice.toLocaleString("th-TH", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          : "",
+      remark: remark?.description ?? "",
     };
   });
 
@@ -94,8 +121,7 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
             <div className="pdf-company">
               <p className="pdf-company-name">บริษัท ประธานพรเซอร์วิซ จำกัด</p>
               <p>124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110</p>
-              <p>เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477</p>
-              <h1>ใบแจ้งซ่อม</h1>
+              <h1 className="pdf-title">ใบแจ้งซ่อม</h1>
             </div>
 
             <div className="pdf-logo pdf-logo-right" aria-hidden="true" />
@@ -108,7 +134,7 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
                   <span className="label">ชื่อ บริษัท/ลูกค้า</span>
                   <span className="value">{form.client || "-"}</span>
                 </div>
-                <div className="pdf-pair">
+                <div className="pdf-pair wide">
                   <span className="label">เบอร์โทร</span>
                   <span className="value">{form.phone || "-"}</span>
                 </div>
@@ -122,19 +148,19 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
               </div>
 
               <div className="pdf-row">
-                <div className="pdf-pair">
+                <div className="pdf-pair vehicle-brand-pair">
                   <span className="label">ยี่ห้อรถ</span>
                   <span className="value">{form.brand || "-"}</span>
                 </div>
-                <div className="pdf-pair">  
+                <div className="pdf-pair vehicle-model-pair">  
                   <span className="label">รุ่นรถ</span>
                   <span className="value">{form.vehicleModel || "-"}</span>
                 </div>
-                <div className="pdf-pair">
+                <div className="pdf-pair vehicle-number-pair">
                   <span className="label">เบอร์รถ</span>
                   <span className="value">{form.vehicleNumber || "-"}</span>
                 </div>
-                <div className="pdf-pair">
+                <div className="pdf-pair vehicle-plate-pair">
                   <span className="label">ทะเบียนรถ</span>
                   <span className="value">{form.licensePlate || "-"}</span>
                 </div>
@@ -162,7 +188,7 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
             </div>
             <div className="pdf-pair">
               <span className="label">วันที่ใบแจ้งซ่อม</span>
-              <span className="value">{form.repairReportDate || "-"}</span>
+              <span className="value">{formatThaiDateTime(form.repairReportDate)}</span>
             </div>
           </div>
             </div>
@@ -183,6 +209,7 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
                 <th className="col-repair">รายการซ่อม</th>
                 <th className="col-parts">รายการอะไหล่</th>
                 <th className="col-qty">จำนวน</th>
+                <th className="col-unit">หน่วย</th>
                 <th className="col-unit-price">ราคา/หน่วย</th>
                 <th className="col-total">ราคา</th>
                 <th className="col-remark">หมายเหตุ</th>
@@ -195,20 +222,24 @@ export default function RepairPDFTemplate({ form, containerRef }: RepairPDFTempl
                   <td className="col-repair">{row.description}</td>
                   <td className="col-parts">{row.partName}</td>
                   <td className="col-qty">{row.quantity}</td>
+                  <td className="col-unit">{row.unit}</td>
                   <td className="col-unit-price">{row.unitPrice}</td>
                   <td className="col-total">{row.totalPrice}</td>
-                  <td className="col-remark"></td>
+                  <td className="col-remark">{row.remark}</td>
                 </tr>
               ))}
             </tbody>
             {pageIndex === pages.length - 1 && (
               <tfoot>
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "right", fontWeight: 700 }}>
+                  <td colSpan={6} style={{ textAlign: "right", fontWeight: 700 }}>
                     รวมราคา
                   </td>
                   <td colSpan={2} style={{ textAlign: "right", fontWeight: 700 }}>
-                    {grandTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 })}
+                    {grandTotal.toLocaleString("th-TH", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </td>
                 </tr>
               </tfoot>
