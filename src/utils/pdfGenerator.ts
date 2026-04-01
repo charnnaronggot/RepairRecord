@@ -342,10 +342,11 @@ export function generateRepairPDFFromHTML(htmlElement: HTMLElement , records: Re
 
   const minDate = toBuddhistDate(minDateObj);
   const maxDate = toBuddhistDate(maxDateObj);
-
   var fileName = "";
   if(records.length === 1 && records[0].jobNumber) {
-    fileName = `${records[0].jobNumber}-${records[0].licensePlate}-${records[0].repairParts[0].partName}.pdf`;
+    const plate = records[0].licensePlate?.trim() || "emptyPlate";
+    const partName = records[0].repairParts?.[0]?.partName?.trim() || "emptyPart";
+    fileName = `${records[0].jobNumber}-${plate}-${partName}.pdf`;
   } else {
     fileName = `${minDate.replace(/-/g, "")}-${maxDate.replace(/-/g, "")}.pdf`;
 

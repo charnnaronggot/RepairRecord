@@ -19,7 +19,7 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState<number | "all">(10);
   const [message, setMessage] = useState("");
   const [pdfRecords, setPdfRecords] = useState<RepairRecord[]>([]);
   const [isPreparingPdf, setIsPreparingPdf] = useState(false);
@@ -107,9 +107,13 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
 //   }
 // );
 
-  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedRecords = filteredRecords.slice(startIndex, startIndex + pageSize);
+  const isShowAll = pageSize === "all";
+  const effectivePageSize = isShowAll ? Math.max(filteredRecords.length, 1) : pageSize;
+  const totalPages = isShowAll ? 1 : Math.max(1, Math.ceil(filteredRecords.length / effectivePageSize));
+  const startIndex = isShowAll ? 0 : (currentPage - 1) * effectivePageSize;
+  const paginatedRecords = isShowAll
+    ? filteredRecords
+    : filteredRecords.slice(startIndex, startIndex + effectivePageSize);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -302,7 +306,8 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
               <select
                 value={pageSize}
                 onChange={(e) => {
-                  setPageSize(Number(e.target.value));
+                  const value = e.target.value;
+                  setPageSize(value === "all" ? "all" : Number(value));
                   setCurrentPage(1);
                 }}
                 className="filter-select"
@@ -310,12 +315,13 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
                 <option value={10}>10</option>
                 <option value={20}>20</option>
                 <option value={50}>50</option>
+                <option value="all">ทั้งหมด</option>
               </select>
             </label>
               <button
                 className="page-btn"
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
+                disabled={isShowAll || currentPage === 1}
               >
               ◀ ก่อนหน้า
             </button>
@@ -325,9 +331,9 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
             </span>
 
             <button
-              className={`page-btn ${currentPage === totalPages ? "disabled" : ""}`}
+              className={`page-btn ${isShowAll || currentPage === totalPages ? "disabled" : ""}`}
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
+              disabled={isShowAll || currentPage === totalPages}
             >
               ถัดไป ▶
             </button>

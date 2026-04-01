@@ -18,9 +18,16 @@ interface RepairFormProps {
   onCancel?: () => void;
 }
 
+function createNewRepairRecord(): RepairRecord {
+  return {
+    ...emptyRepairRecord,
+    repairReportDate: getNowDateTimeLocalValue(),
+  };
+}
+
 export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFormProps) {
   const [form, setForm] = useState<RepairRecord>(() => {
-    const baseForm = initialRecord ? { ...initialRecord } : { ...emptyRepairRecord };
+    const baseForm = initialRecord ? { ...initialRecord } : createNewRepairRecord();
     const normalizedRemarks =
       baseForm.remarks && baseForm.remarks.length > 0
         ? baseForm.remarks
@@ -94,8 +101,7 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
         const id = await addRepairRecord(form);
         setMessage(`บันทึกสำเร็จ! (ID: ${id})`);
         setForm({
-          ...emptyRepairRecord,
-          repairReportDate: getNowDateTimeLocalValue(),
+          ...createNewRepairRecord(),
         });
       }
       onSave?.();

@@ -753,7 +753,9 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
 
   var fileName = "";
   if(records.length === 1 && records[0].jobNumber) {
-    fileName = `${records[0].jobNumber}-${records[0].licensePlate}-${records[0].repairParts[0].partName}.xlsx`;
+    const plate = records[0].licensePlate?.trim() || "emptyPlate";
+    const partName = records[0].repairParts?.[0]?.partName?.trim() || "emptyPart";
+    fileName = `${records[0].jobNumber}-${plate}-${partName}.xlsx`;
   } else {
     fileName = `${minDate.replace(/-/g, "")}-${maxDate.replace(/-/g, "")}.xlsx`;
 

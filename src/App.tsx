@@ -18,6 +18,7 @@ function App() {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState<"form" | "list">("form");
   const [selectedRecord, setSelectedRecord] = useState<RepairRecord | undefined>();
+  const [formRenderKey, setFormRenderKey] = useState(0);
 
   useEffect(() => {
     const unsubscribe = observeAuthState((user) => {
@@ -131,6 +132,7 @@ function App() {
               onClick={() => {
                 setCurrentPage("form");
                 setSelectedRecord(undefined);
+                setFormRenderKey((prev) => prev + 1);
               }}
             >
               ➕ เพิ่มใหม่
@@ -152,6 +154,7 @@ function App() {
       <main className="main-content">
         {currentPage === "form" ? (
           <RepairForm
+            key={formRenderKey}
             initialRecord={selectedRecord}
             onSave={handleFormSave}
             onCancel={handleFormCancel}
