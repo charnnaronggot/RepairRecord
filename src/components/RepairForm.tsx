@@ -219,7 +219,7 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
             📋 ดาวน์โหลด PDF ตัวอย่าง
           </button> */}
         <button type="button" className="btn btn-pdf" onClick={handleGeneratePDF}>
-          📄 Generate PDF
+          📄 PDF
         </button>
         <button type="button" className="btn btn-excel" onClick={() => exportToExcel([form])}>
           📥 Excel
