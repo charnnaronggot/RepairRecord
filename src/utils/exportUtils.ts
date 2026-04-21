@@ -745,7 +745,7 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
     const yearBE = date.getFullYear() + 543;
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
-    return `${yearBE}${month}${day}`;
+    return `${day}${month}${yearBE}`;
   };
 
   const minDate = toBuddhistDate(minDateObj);
@@ -753,7 +753,7 @@ export async function exportToExcel(records: RepairRecord[]): Promise<void> {
 
   var fileName = "";
   if(records.length === 1 && records[0].jobNumber) {
-    fileName = `${records[0].jobNumber}-${records[0].licensePlate}-${records[0].repairParts[0].partName}.xlsx`;
+    fileName = `${records[0].jobNumber}-${records[0].licensePlate}-${records[0].repairItems[0].description}.xlsx`;
   } else {
     fileName = `${minDate.replace(/-/g, "")}-${maxDate.replace(/-/g, "")}.xlsx`;
 

@@ -345,10 +345,9 @@ export function generateRepairPDFFromHTML(htmlElement: HTMLElement , records: Re
 
   var fileName = "";
   if(records.length === 1 && records[0].jobNumber) {
-    fileName = `${records[0].jobNumber}-${records[0].licensePlate}-${records[0].repairParts[0].partName}.pdf`;
+    fileName = `${records[0].jobNumber}-${records[0].licensePlate}-${records[0].repairItems[0].description}.pdf`;
   } else {
     fileName = `${minDate.replace(/-/g, "")}-${maxDate.replace(/-/g, "")}.pdf`;
-
   }
   const render = async () => {
     const doc = new jsPDF("p", "mm", "a4");
