@@ -1,4 +1,4 @@
-import { useState , useRef } from "react";
+import { useState , useRef , useEffect} from "react";
 import Camera from "./Camera";
 import RepairItemsTable from "./RepairItemsTable";
 import RepairPartsTable from "./RepairPartsTable";
@@ -6,7 +6,7 @@ import RemarkTable from "./RemarkTable";
 import AutocompleteInput from "./AutocompleteInput";
 import type { RepairRecord, RepairItem, RepairPart, RemarkItem } from "../types/RepairRecord";
 import { emptyRepairRecord } from "../types/RepairRecord";
-import { addRepairRecord, updateRepairRecord } from "../services/firebaseService";
+import { addRepairRecord, updateRepairRecord , getNextJobNumber  } from "../services/firebaseService";
 import { generateRepairPDFFromHTML } from "../utils/pdfGenerator";
 import { clientsList, brandsList } from "../config/clientsAndBrands";
 import RepairPDFTemplate from "../PDFTemplate/RepairPDFTemplate";
@@ -18,9 +18,16 @@ interface RepairFormProps {
   onCancel?: () => void;
 }
 
+function createNewRepairRecord(): RepairRecord {
+  return {
+    ...emptyRepairRecord,
+    repairReportDate: getNowDateTimeLocalValue(),
+  };
+}
+
 export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFormProps) {
   const [form, setForm] = useState<RepairRecord>(() => {
-    const baseForm = initialRecord ? { ...initialRecord } : { ...emptyRepairRecord };
+    const baseForm = initialRecord ? { ...initialRecord } : createNewRepairRecord();
     const normalizedRemarks =
       baseForm.remarks && baseForm.remarks.length > 0
         ? baseForm.remarks
@@ -34,6 +41,8 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
       remarks: normalizedRemarks,
     };
   });
+  const currentYear = new Date().getFullYear() ;
+  const buddhistYear = currentYear + 543;
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const isEdit = !!initialRecord?.id;
@@ -58,6 +67,28 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
     setForm((prev) => ({ ...prev, photo: imageData }));
   };
 
+  useEffect(() => {
+    if (isEdit) return;
+
+    let mounted = true;
+    getNextJobNumber(currentYear)
+      .then((next) => {
+        if (!mounted) return;
+        setForm((prev) => ({
+          ...prev,
+          jobNumber: next,
+          invoiceNumber: `INV-${buddhistYear}-${next}`,
+        }));
+      })
+      .catch((err) => {
+        console.error("Failed to generate job number:", err);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isEdit, currentYear, buddhistYear]);
+
   const handleSave = async () => {
     
     setSaving(true);
@@ -70,8 +101,7 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
         const id = await addRepairRecord(form);
         setMessage(`บันทึกสำเร็จ! (ID: ${id})`);
         setForm({
-          ...emptyRepairRecord,
-          repairReportDate: getNowDateTimeLocalValue(),
+          ...createNewRepairRecord(),
         });
       }
       onSave?.();
@@ -118,9 +148,9 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
         {/* <p>{isEdit ? "Repair Record System - Edit" : "Repair Record System"}</p> */}
       </header>
 
-      <form onSubmit={(e) => e.preventDefault()}>
+      <form onSubmit={(e) => e.preventDefault()} >
         {/* ─── Vehicle & Client Info Grid ─── */}
-        <section className="form-section">
+        <section className="form-section" >
           <h2>ข้อมูลลูกค้า & ยานพาหนะ</h2>
           <div className="form-grid">
             {fields.map((f) => (
@@ -143,13 +173,15 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
                     type={f.type}
                   />
                 ) : (
-                  <input
-                    className="form-input"
-                    type={f.type ?? "text"}
-                    value={form[f.key] as string}
-                    placeholder={f.placeholder}
-                    onChange={(e) => updateField(f.key, e.target.value)}
-                  />
+                <input
+                  className="form-input"
+                  type={f.type ?? "text"}
+                  value={form[f.key] as string}
+                  placeholder={f.placeholder}
+                  onChange={(e) => updateField(f.key, e.target.value)}
+                  readOnly={f.key === "jobNumber"|| f.key === "invoiceNumber"}
+                  disabled={f.key === "jobNumber"|| f.key === "invoiceNumber"}
+                />
                 )}
               </div>
             ))}
@@ -193,7 +225,7 @@ export default function RepairForm({ initialRecord, onSave, onCancel }: RepairFo
             📋 ดาวน์โหลด PDF ตัวอย่าง
           </button> */}
         <button type="button" className="btn btn-pdf" onClick={handleGeneratePDF}>
-          📄 Generate PDF
+          📄 PDF
         </button>
         <button type="button" className="btn btn-excel" onClick={() => exportToExcel([form])}>
           📥 Excel

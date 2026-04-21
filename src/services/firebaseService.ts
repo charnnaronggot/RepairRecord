@@ -4,6 +4,8 @@ import {
   getDocs,
   getDoc,
   doc,
+  query,
+  orderBy,
   updateDoc,
   deleteDoc,
   serverTimestamp,
@@ -70,7 +72,11 @@ export async function addRepairRecord(record: RepairRecord): Promise<string> {
 }
 
 export async function getRepairRecords(): Promise<RepairRecord[]> {
-  const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+  const recordsQuery = query(
+    collection(db, COLLECTION_NAME),
+    orderBy("repairReportDate", "desc"),
+  );
+  const querySnapshot = await getDocs(recordsQuery);
   return querySnapshot.docs.map(
     (d) => ({ id: d.id, ...d.data() }) as RepairRecord
   );
@@ -100,4 +106,24 @@ export async function updateRepairRecord(
 export async function deleteRepairRecord(id: string): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, id);
   await deleteDoc(docRef);
+}
+
+export async function getNextJobNumber(currentYear: number): Promise<string> {
+  const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+
+  let max = 0;
+  querySnapshot.forEach((d) => {
+    const data = d.data() as Partial<RepairRecord>;
+    const reportYear = Number(String(data.repairReportDate ?? "").slice(0, 4));
+    if (reportYear !== currentYear) {
+      return;
+    }
+    const raw = String(data.jobNumber ?? "").trim();
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > max) {
+      max = n;
+    }
+  });
+
+  return String(max + 1).padStart(3, "0");
 }

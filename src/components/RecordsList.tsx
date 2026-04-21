@@ -18,6 +18,8 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | "all">(10);
   const [message, setMessage] = useState("");
   const [pdfRecords, setPdfRecords] = useState<RepairRecord[]>([]);
   const [isPreparingPdf, setIsPreparingPdf] = useState(false);
@@ -82,7 +84,7 @@ export default function RecordsList({ onEdit }: RecordsListProps) {
   };
 
   // Filter records
-const filteredRecords = records
+  const filteredRecords = records
   .filter((record) => {
     const matchesSearch = (
       String(record.jobNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -96,13 +98,32 @@ const filteredRecords = records
     const matchesTo = dateTo === "" || recordDate <= dateTo;
 
     return matchesSearch && matchesStatus && matchesFrom && matchesTo;
-  })
-  .sort((a, b) => {
-    const numA = Number(a.jobNumber);
-    const numB = Number(b.jobNumber);
-    if (!isNaN(numA) && !isNaN(numB)) return numB - numA;
-    return String(b.jobNumber || "").localeCompare(String(a.jobNumber || ""));
   });
+//   .sort((a, b) => {
+//     const numA = Number(a.jobNumber);
+//     const numB = Number(b.jobNumber);
+//     if (!isNaN(numA) && !isNaN(numB)) return numB - numA;
+//     return String(b.jobNumber || "").localeCompare(String(a.jobNumber || ""));
+//   }
+// );
+
+  const isShowAll = pageSize === "all";
+  const effectivePageSize = isShowAll ? Math.max(filteredRecords.length, 1) : pageSize;
+  const totalPages = isShowAll ? 1 : Math.max(1, Math.ceil(filteredRecords.length / effectivePageSize));
+  const startIndex = isShowAll ? 0 : (currentPage - 1) * effectivePageSize;
+  const paginatedRecords = isShowAll
+    ? filteredRecords
+    : filteredRecords.slice(startIndex, startIndex + effectivePageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     if (!isPreparingPdf || !pdfContainerRef.current || pdfRecords.length === 0) {
@@ -216,9 +237,9 @@ const filteredRecords = records
                 </td>
               </tr>
             ) : (
-              filteredRecords.map((record, idx) => (
+              paginatedRecords.map((record, idx) => (
                 <tr key={record.id}>
-                  <td className="center">{idx + 1}</td>
+                  <td className="center">{startIndex + idx + 1}</td>
                   <td>
                     <strong>{record.jobNumber}</strong>
                   </td>
@@ -274,6 +295,52 @@ const filteredRecords = records
           </tbody>
         </table>
       </div>
+
+      {filteredRecords.length > 0 && (
+        <div className="list-controls" style={{ marginTop: "12px" }}>
+          <div className="filter-controls" style={{ marginLeft: "auto" }}>
+           
+            <div className="pagination">
+               <label className="date-range-label">
+              ต่อหน้า
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPageSize(value === "all" ? "all" : Number(value));
+                  setCurrentPage(1);
+                }}
+                className="filter-select"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value="all">ทั้งหมด</option>
+              </select>
+            </label>
+              <button
+                className="page-btn"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={isShowAll || currentPage === 1}
+              >
+              ◀ ก่อนหน้า
+            </button>
+
+            <span className="small" style={{ alignSelf: "center" }}>
+              หน้า {currentPage} / {totalPages}
+            </span>
+
+            <button
+              className={`page-btn ${isShowAll || currentPage === totalPages ? "disabled" : ""}`}
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={isShowAll || currentPage === totalPages}
+            >
+              ถัดไป ▶
+            </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {message && (
         <div className={`toast ${message.includes("ไม่") ? "toast-error" : "toast-success"}`}>
