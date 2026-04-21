@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { RepairPart } from "../types/RepairRecord";
 import { emptyRepairPart } from "../types/RepairRecord";
 // import AutocompleteInput from "./AutocompleteInput";
@@ -10,19 +11,20 @@ interface RepairPartsTableProps {
 const COMMON_PART_UNITS = ["ชิ้น", "คู่", "งาน", "ครั้ง", "ชุด", "เส้น", "ลูก", "ตัว", "ลิตร" ,"kg" , "ข้าง" ,"ดวง" , "แผ่น" , "เพลา" ,"เที่ยว"];
 
 export default function RepairPartsTable({ parts, onChange }: RepairPartsTableProps) {
+  const [quantityInputs, setQuantityInputs] = useState<Record<string, string>>({});
   const roundTo2 = (value: number): number => Math.round(value * 100) / 100;
   const normalizeQuantity = (value: string | number): number => {
     if (value === "") return 0;
 
     const numericValue = typeof value === "number"
       ? value
-      : Number.parseInt(value.replace(/^0+(?=\d)/, ""), 10);
+      : Number.parseFloat(value);
 
-    if (Number.isNaN(numericValue) || numericValue <= 0) {
+    if (Number.isNaN(numericValue) || numericValue < 0) {
       return 0;
     }
 
-    return Math.trunc(numericValue);
+    return roundTo2(numericValue);
   };
 
   const addRow = () => {
@@ -101,9 +103,13 @@ export default function RepairPartsTable({ parts, onChange }: RepairPartsTablePr
                   <input
                     type="number"
                     min="0"
-                    step="1"
-                    value={part.quantity === 0 ? "" : part.quantity}
-                    onChange={(e) => updatePart(part.id, "quantity", e.target.value)}
+                    step="0.01"
+                    value={quantityInputs[part.id] ?? (part.quantity === 0 ? "" : String(part.quantity))}
+                    onChange={(e) => setQuantityInputs(prev => ({ ...prev, [part.id]: e.target.value }))}
+                    onBlur={(e) => {
+                      updatePart(part.id, "quantity", e.target.value);
+                      setQuantityInputs(prev => { const next = { ...prev }; delete next[part.id]; return next; });
+                    }}
                   />
                 </td>
                 <td>
