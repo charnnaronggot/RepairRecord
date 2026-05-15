@@ -594,7 +594,7 @@ async function buildTemplateSheet(
 
   await addContainedImageToRange(workbook, worksheet, logoDataUrl, "jpeg", 1, 1, 2, 4);
   
-  setCell(worksheet, "C1", "บริษัท ประธานพรเซอร์วิซ จำกัด", { bold: true, fontSize: 16, align: "center" });
+  setCell(worksheet, "C1", "บริษัท ประธานพรเซอร์วิส จำกัด", { bold: true, fontSize: 16, align: "center" });
   setCell(worksheet, "C2", "124/69 หมู่ 4 ถ.เลียบคลอง 10 ต.บึงสนั่น อ.ธัญบุรี จ.ปทุมธานี 12110", { fontSize: 10, align: "center" });
   // setCell(worksheet, "C3", "เบอร์โทรติดต่อ 081-3747760, 02-9089477 แฟกซ์ 02-9089477", { fontSize: 10, align: "center" });
   setCell(worksheet, "C3", "ใบแจ้งซ่อม", { bold: true, fontSize: 20 , align: "center" });
